@@ -40,6 +40,28 @@ function LoadingScreen() {
   )
 }
 
+// Redirect неавторизованных на welcome
+function GuestRoute({ children }: { children: React.ReactNode }) {
+  const { user } = useAuthStore()
+
+  if (user) {
+    return <Navigate to="/" replace />
+  }
+
+  return <>{children}</>
+}
+
+// Главная: неавторизованных → welcome, авторизованных → расписание
+function HomeRoute() {
+  const { user } = useAuthStore()
+
+  if (!user) {
+    return <Navigate to="/welcome" replace />
+  }
+
+  return <MainPage />
+}
+
 // Protected route component
 function ProtectedRoute({ children, requireAdmin = false }: { children: React.ReactNode; requireAdmin?: boolean }) {
   const { user, loading, isAdmin } = useAuthStore()
@@ -68,14 +90,14 @@ function App() {
 
   return (
     <Routes>
-      {/* Auth routes */}
-      <Route path="/welcome" element={<WelcomePage />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
+      {/* Auth routes (только для неавторизованных) */}
+      <Route path="/welcome" element={<GuestRoute><WelcomePage /></GuestRoute>} />
+      <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
+      <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
       <Route path="/recovery" element={<PasswordRecoveryPage />} />
 
       {/* Main routes */}
-      <Route path="/" element={<MainPage />}>
+      <Route path="/" element={<HomeRoute />}>
         <Route index element={<SchedulePage />} />
         <Route path="my-enrollments" element={<MyEnrollmentsPage />} />
         <Route path="profile" element={<ProfilePage />} />
