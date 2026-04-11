@@ -107,13 +107,26 @@ export const checkAuthState = async (): Promise<User | null> => {
       unsubscribe()
       
       if (firebaseUser) {
-        const user = await convertFirebaseUser(firebaseUser)
-        useAuthStore.getState().setUser(user)
-        resolve(user)
+        try {
+          const user = await convertFirebaseUser(firebaseUser)
+          useAuthStore.getState().setUser(user)
+          resolve(user)
+        } catch (error) {
+          console.error('Ошибка загрузки профиля:', error)
+          useAuthStore.getState().setUser(null)
+          resolve(null)
+        }
       } else {
         useAuthStore.getState().setUser(null)
         resolve(null)
       }
     })
+
+    // Таймаут на случай если Firebase не настроен
+    setTimeout(() => {
+      unsubscribe()
+      useAuthStore.getState().setLoading(false)
+      resolve(null)
+    }, 5000)
   })
 }

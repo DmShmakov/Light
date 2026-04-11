@@ -4,7 +4,11 @@ import { BrowserRouter } from 'react-router-dom'
 import { ThemeProvider, createTheme } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import App from './App'
+import { checkAuthState } from './services/authService'
 import './index.css'
+
+// Проверка авторизации при старте приложения
+checkAuthState()
 
 const theme = createTheme({
   palette: {

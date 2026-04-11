@@ -1,7 +1,6 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
-import { getMessaging } from 'firebase/messaging'
 import { getStorage } from 'firebase/storage'
 
 // TODO: Заменить на реальные конфигурационные данные из Firebase Console
@@ -20,7 +19,16 @@ const app = initializeApp(firebaseConfig)
 // Инициализация сервисов
 export const auth = getAuth(app)
 export const db = getFirestore(app)
-export const messaging = getMessaging(app)
 export const storage = getStorage(app)
+
+// Messaging инициализируется лениво (только когда нужен)
+let _messaging: ReturnType<typeof import('firebase/messaging').getMessaging> | null = null
+export const getMessagingService = () => {
+  if (!_messaging) {
+    const { getMessaging } = require('firebase/messaging')
+    _messaging = getMessaging(app)
+  }
+  return _messaging
+}
 
 export default app
