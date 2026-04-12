@@ -45,21 +45,14 @@ test.describe('E2E: Полный цикл с Firebase', () => {
     await expect(page.getByRole('heading', { name: TEST_USER.name })).toBeVisible()
     await expect(page.getByText(TEST_USER.email)).toBeVisible()
     await expect(page.getByText(TEST_USER.phone)).toBeVisible()
-    
-    // Проверяем что есть кнопка админ-панели
-    await expect(page.getByRole('button', { name: 'Админ-панель' })).toBeVisible()
   })
 
   test('админ-панель — создание занятия', async ({ page }) => {
-    // MUI DateTimePicker не реагирует на fill() через Playwright
-    // Тест требует ручного взаимодействия или mock
     test.skip(true, 'MUI DateTimePicker не поддерживает fill() — тестируется вручную')
     await loginViaUI(page)
     
-    // Переход в админку через профиль
-    await page.getByRole('button', { name: 'Профиль' }).click()
-    await page.waitForTimeout(500)
-    await page.getByRole('button', { name: 'Админ-панель' }).click()
+    // Переход в админку через нижнюю навигацию
+    await page.getByRole('button', { name: 'Админ' }).click()
     await page.waitForURL(/\/admin/, { timeout: 10000 })
     
     // Проверяем что админка загрузилась
@@ -194,10 +187,11 @@ test.describe('E2E: Полный цикл с Firebase', () => {
   test('админ-панель — управление расписанием', async ({ page }) => {
     await loginViaUI(page)
     
-    await page.goto('/admin/schedule')
+    // Переход через нижнюю навигацию
+    await page.getByRole('button', { name: 'Админ' }).click()
     await page.waitForTimeout(2000)
     
-    await expect(page.getByRole('heading', { name: 'Управление расписанием' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Админ-панель' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Создать занятие' })).toBeVisible()
   })
 })

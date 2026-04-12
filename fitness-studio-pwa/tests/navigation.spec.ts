@@ -25,9 +25,10 @@ test.describe('Навигация по приложению', () => {
       test.skip(true, 'Firebase не настроен — регистрация не прошла')
     }
     
-    // Проверяем навигацию — нижняя панель (BottomNavigationAction — это button)
+    // Проверяем навигацию — нижняя панель (4 кнопки для админа)
     await expect(page.getByRole('button', { name: 'Расписание' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Мои записи' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Админ' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Профиль' })).toBeVisible()
   })
 
@@ -49,7 +50,7 @@ test.describe('Навигация по приложению', () => {
       test.skip(true, 'Firebase не настроен')
     }
     
-    // Переход в профиль — BottomNavigationAction это button
+    // Переход в профиль — BottomNavigationAction
     await page.getByRole('button', { name: 'Профиль' }).click()
     await page.waitForTimeout(1000)
     

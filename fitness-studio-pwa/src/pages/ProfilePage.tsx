@@ -14,14 +14,13 @@ import PersonIcon from '@mui/icons-material/Person'
 import EmailIcon from '@mui/icons-material/Email'
 import PhoneIcon from '@mui/icons-material/Phone'
 import LogoutIcon from '@mui/icons-material/Logout'
-import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
 import NotificationIcon from '@mui/icons-material/Notifications'
 import { useAuthStore } from '../store/authStore'
 import { logout } from '../services/authService'
 
 export default function ProfilePage() {
   const navigate = useNavigate()
-  const { user, isAdmin } = useAuthStore()
+  const { user } = useAuthStore()
 
   const handleLogout = async () => {
     await logout()
@@ -50,17 +49,6 @@ export default function ProfilePage() {
         <Typography variant="h5" gutterBottom>
           {user.name}
         </Typography>
-
-        {isAdmin && (
-          <Button
-            variant="outlined"
-            startIcon={<AdminPanelSettingsIcon />}
-            sx={{ mt: 1 }}
-            onClick={() => navigate('/admin')}
-          >
-            Админ-панель
-          </Button>
-        )}
       </Box>
 
       {/* Информация о пользователе */}

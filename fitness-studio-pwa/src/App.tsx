@@ -101,58 +101,58 @@ function App() {
         <Route index element={<SchedulePage />} />
         <Route path="my-enrollments" element={<MyEnrollmentsPage />} />
         <Route path="profile" element={<ProfilePage />} />
+
+        {/* Admin routes — внутри MainPage чтобы была навигация */}
+        <Route
+          path="admin"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminDashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="admin/schedule"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminSchedulePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="admin/schedule/create"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminCreateClassPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="admin/schedule/edit/:classId"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminCreateClassPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="admin/participants/:classId"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminParticipantsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="admin/users"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminUsersPage />
+            </ProtectedRoute>
+          }
+        />
       </Route>
       <Route path="/class/:classId" element={<ClassDetailsPage />} />
-
-      {/* Admin routes */}
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute requireAdmin>
-            <AdminDashboardPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin/schedule"
-        element={
-          <ProtectedRoute requireAdmin>
-            <AdminSchedulePage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin/schedule/create"
-        element={
-          <ProtectedRoute requireAdmin>
-            <AdminCreateClassPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin/schedule/edit/:classId"
-        element={
-          <ProtectedRoute requireAdmin>
-            <AdminCreateClassPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin/participants/:classId"
-        element={
-          <ProtectedRoute requireAdmin>
-            <AdminParticipantsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin/users"
-        element={
-          <ProtectedRoute requireAdmin>
-            <AdminUsersPage />
-          </ProtectedRoute>
-        }
-      />
 
       {/* Catch all */}
       <Route path="*" element={<Navigate to="/" replace />} />

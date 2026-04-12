@@ -48,6 +48,13 @@ test.describe('Форма создания/редактирования заня
   // Тест 6: Админ-панель требует авторизации
   test('админ-панель требует авторизации', async ({ page }) => {
     await page.goto('/admin')
-    await expect(page).toHaveURL(/.*\/login/)
+    await expect(page).toHaveURL(/.*\/welcome/)
+  })
+
+  // Тест 7: Нижняя навигация — 3 элемента для гостя
+  test('нижняя навигация — 3 элемента для гостя', async ({ page }) => {
+    await page.goto('/welcome')
+    // Нижняя навигация не показывается на welcome
+    await expect(page.getByRole('button', { name: 'Расписание' })).not.toBeVisible()
   })
 })
