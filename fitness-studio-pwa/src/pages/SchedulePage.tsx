@@ -17,7 +17,7 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import { format, addWeeks, isToday, isPast } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { useScheduleStore } from '../store/scheduleStore'
-import { getClassesByWeek } from '../services/firestoreService'
+import { getClassesByWeek, getEnrollmentCounts } from '../services/firestoreService'
 import { FitnessClass } from '../types'
 
 // Маппинг типов занятий на цвета
@@ -39,6 +39,7 @@ export default function SchedulePage() {
   const navigate = useNavigate()
   const { classes, loading, setLoading, selectedWeekStart, setSelectedWeekStart } = useScheduleStore()
   const [selectedDay, setSelectedDay] = useState(0)
+  const [enrollmentCounts, setEnrollmentCounts] = useState<Record<string, number>>({})
 
   // Получение дней текущей недели
   const weekDays = Array.from({ length: 7 }, (_, i) => {
@@ -58,6 +59,11 @@ export default function SchedulePage() {
 
         const fetchedClasses = await getClassesByWeek(selectedWeekStart, endDate)
         useScheduleStore.getState().setClasses(fetchedClasses)
+
+        // Загрузка количества записей
+        const classIds = fetchedClasses.map((c) => c.classId)
+        const counts = await getEnrollmentCounts(classIds)
+        setEnrollmentCounts(counts)
       } catch (error) {
         console.error('Ошибка загрузки расписания:', error)
       } finally {
@@ -163,7 +169,9 @@ export default function SchedulePage() {
         // Карточки занятий
         filteredClasses.map((cls: FitnessClass) => {
           const isPastClass = isPast(new Date(cls.endDateTime))
-          
+          const enrolled = enrollmentCounts[cls.classId] || 0
+          const available = cls.maxParticipants - enrolled
+
           return (
             <Card
               key={cls.classId}
@@ -193,8 +201,13 @@ export default function SchedulePage() {
                   {format(new Date(cls.startDateTime), 'HH:mm')} — {format(new Date(cls.endDateTime), 'HH:mm')}
                 </Typography>
 
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                  Свободно: {cls.maxParticipants} мест
+                <Typography
+                  variant="body2"
+                  sx={{ mt: 1, color: available === 0 ? 'error.main' : 'text.secondary' }}
+                >
+                  {available === 0
+                    ? 'Мест нет'
+                    : `Свободно: ${available} из ${cls.maxParticipants} (записано: ${enrolled})`}
                 </Typography>
               </CardContent>
 

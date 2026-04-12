@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import Box from '@mui/material/Box'
@@ -17,6 +17,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFnsV3'
 import { ru } from 'date-fns/locale'
 import { getClassById, createClass, updateClass } from '../../services/firestoreService'
+import { useAuthStore } from '../../store/authStore'
 import { FitnessClass } from '../../types'
 
 const classSchema = z.object({
@@ -26,7 +27,7 @@ const classSchema = z.object({
   startDateTime: z.date(),
   endDateTime: z.date(),
   maxParticipants: z.coerce.number().min(1, 'Минимум 1 участник').max(100),
-  description: z.string().min(10, 'Описание должно содержать минимум 10 символов'),
+  description: z.string().optional(),
   level: z.enum(['beginner', 'intermediate', 'advanced']),
 })
 
@@ -49,16 +50,17 @@ const levelOptions = [
 export default function AdminCreateClassPage() {
   const navigate = useNavigate()
   const { classId } = useParams<{ classId: string }>()
+  const { user } = useAuthStore()
   const isEditMode = !!classId
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const {
-    register,
     handleSubmit,
     setValue,
     watch,
+    control,
     formState: { errors },
   } = useForm<ClassForm>({
     resolver: zodResolver(classSchema),
@@ -86,7 +88,7 @@ export default function AdminCreateClassPage() {
           setValue('startDateTime', new Date(classData.startDateTime))
           setValue('endDateTime', new Date(classData.endDateTime))
           setValue('maxParticipants', classData.maxParticipants)
-          setValue('description', classData.description)
+          setValue('description', classData.description || '')
           setValue('level', classData.level)
         }
       } catch (err) {
@@ -98,32 +100,58 @@ export default function AdminCreateClassPage() {
     loadClass()
   }, [isEditMode, classId, setValue])
 
+  // Автозаполнение endDateTime = startDateTime + 1 час
+  const startDateTimeValue = watch('startDateTime')
+  useEffect(() => {
+    if (startDateTimeValue) {
+      const endDate = new Date(startDateTimeValue)
+      endDate.setHours(endDate.getHours() + 1)
+
+      // Проверяем, не было ли уже установлено значение
+      const currentEnd = watch('endDateTime')
+      if (!currentEnd) {
+        setValue('endDateTime', endDate, { shouldValidate: true })
+      }
+    }
+  }, [startDateTimeValue])
+
   const onSubmit = async (data: ClassForm) => {
     setLoading(true)
     setError(null)
 
     try {
+      console.log('=== Создание занятия ===')
+      console.log('User:', user)
+      console.log('UID:', user?.uid)
+      console.log('Roles:', user?.roles)
+      
       const classData: Omit<FitnessClass, 'classId' | 'createdAt'> = {
         title: data.title,
         type: data.type,
-        trainerId: 'admin-temp', // TODO: Получить из авторизации
+        trainerId: user?.uid || '',
         trainerName: data.trainerName,
         startDateTime: data.startDateTime,
         endDateTime: data.endDateTime,
         maxParticipants: data.maxParticipants,
-        description: data.description,
+        description: data.description || '',
         level: data.level,
         status: 'scheduled',
       }
 
+      console.log('Class data:', classData)
+
       if (isEditMode && classId) {
         await updateClass(classId, classData)
       } else {
-        await createClass(classData)
+        const newId = await createClass(classData)
+        console.log('Создано занятие с ID:', newId)
       }
 
       navigate('/admin/schedule')
     } catch (err: any) {
+      console.error('Ошибка создания занятия:', err)
+      console.error('Code:', err.code)
+      console.error('Message:', err.message)
       setError(err.message || 'Ошибка сохранения. Попробуйте ещё раз.')
     } finally {
       setLoading(false)
@@ -149,96 +177,144 @@ export default function AdminCreateClassPage() {
         )}
 
         <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <TextField
-            label="Название"
-            fullWidth
-            {...register('title')}
-            error={!!errors.title}
-            helperText={errors.title?.message}
+          <Controller
+            name="title"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                label="Название"
+                fullWidth
+                {...field}
+                error={!!errors.title}
+                helperText={errors.title?.message}
+              />
+            )}
           />
 
-          <TextField
-            select
-            label="Тип занятия"
-            fullWidth
-            {...register('type')}
-            error={!!errors.type}
-            helperText={errors.type?.message}
-          >
-            {classTypes.map((option) => (
-              <MenuItem key={option.value} value={option.value}>
-                {option.label}
-              </MenuItem>
-            ))}
-          </TextField>
-
-          <TextField
-            label="Имя тренера"
-            fullWidth
-            {...register('trainerName')}
-            error={!!errors.trainerName}
-            helperText={errors.trainerName?.message}
+          <Controller
+            name="type"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                select
+                label="Тип занятия"
+                fullWidth
+                {...field}
+                error={!!errors.type}
+                helperText={errors.type?.message}
+              >
+                {classTypes.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+            )}
           />
 
-          <DateTimePicker
-            label="Дата и время начала"
-            value={watch('startDateTime')}
-            onChange={(date) => date && setValue('startDateTime', date)}
-            slotProps={{
-              textField: {
-                fullWidth: true,
-                error: !!errors.startDateTime,
-                helperText: errors.startDateTime?.message,
-              },
-            }}
+          <Controller
+            name="trainerName"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                label="Имя тренера"
+                fullWidth
+                {...field}
+                error={!!errors.trainerName}
+                helperText={errors.trainerName?.message}
+              />
+            )}
           />
 
-          <DateTimePicker
-            label="Дата и время окончания"
-            value={watch('endDateTime')}
-            onChange={(date) => date && setValue('endDateTime', date)}
-            minDate={watch('startDateTime')}
-            slotProps={{
-              textField: {
-                fullWidth: true,
-                error: !!errors.endDateTime,
-                helperText: errors.endDateTime?.message,
-              },
-            }}
+          <Controller
+            name="startDateTime"
+            control={control}
+            render={({ field }) => (
+              <DateTimePicker
+                label="Дата и время начала"
+                value={field.value}
+                onChange={(date) => field.onChange(date)}
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    error: !!errors.startDateTime,
+                    helperText: errors.startDateTime?.message,
+                  },
+                }}
+              />
+            )}
           />
 
-          <TextField
-            label="Максимальное количество участников"
-            type="number"
-            fullWidth
-            {...register('maxParticipants')}
-            error={!!errors.maxParticipants}
-            helperText={errors.maxParticipants?.message}
+          <Controller
+            name="endDateTime"
+            control={control}
+            render={({ field }) => (
+              <DateTimePicker
+                label="Дата и время окончания"
+                value={field.value}
+                onChange={(date) => field.onChange(date)}
+                minDate={watch('startDateTime')}
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    error: !!errors.endDateTime,
+                    helperText: errors.endDateTime?.message,
+                  },
+                }}
+              />
+            )}
           />
 
-          <TextField
-            select
-            label="Уровень сложности"
-            fullWidth
-            {...register('level')}
-            error={!!errors.level}
-            helperText={errors.level?.message}
-          >
-            {levelOptions.map((option) => (
-              <MenuItem key={option.value} value={option.value}>
-                {option.label}
-              </MenuItem>
-            ))}
-          </TextField>
+          <Controller
+            name="maxParticipants"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                label="Максимальное количество участников"
+                type="number"
+                fullWidth
+                {...field}
+                error={!!errors.maxParticipants}
+                helperText={errors.maxParticipants?.message}
+              />
+            )}
+          />
 
-          <TextField
-            label="Описание"
-            multiline
-            rows={4}
-            fullWidth
-            {...register('description')}
-            error={!!errors.description}
-            helperText={errors.description?.message}
+          <Controller
+            name="level"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                select
+                label="Уровень сложности"
+                fullWidth
+                {...field}
+                error={!!errors.level}
+                helperText={errors.level?.message}
+              >
+                {levelOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+            )}
+          />
+
+          <Controller
+            name="description"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                label="Описание"
+                multiline
+                rows={4}
+                fullWidth
+                {...field}
+                error={!!errors.description}
+                helperText={errors.description?.message}
+              />
+            )}
           />
 
           <Button type="submit" variant="contained" size="large" fullWidth disabled={loading}>

@@ -24,18 +24,29 @@ export const getClassesByWeek = async (startDate: Date, endDate: Date): Promise<
     classesRef,
     where('startDateTime', '>=', Timestamp.fromDate(startDate)),
     where('startDateTime', '<=', Timestamp.fromDate(endDate)),
-    where('status', '==', 'scheduled'),
     orderBy('startDateTime', 'asc')
   )
 
   const snapshot = await getDocs(q)
-  return snapshot.docs.map((doc) => ({
-    classId: doc.id,
-    ...doc.data(),
-    startDateTime: doc.data().startDateTime.toDate(),
-    endDateTime: doc.data().endDateTime.toDate(),
-    createdAt: doc.data().createdAt.toDate(),
-  })) as FitnessClass[]
+  return snapshot.docs
+    .map((doc) => {
+      const data = doc.data()
+      return {
+        classId: doc.id,
+        title: data.title,
+        type: data.type,
+        trainerId: data.trainerId,
+        trainerName: data.trainerName,
+        startDateTime: data.startDateTime.toDate(),
+        endDateTime: data.endDateTime.toDate(),
+        maxParticipants: data.maxParticipants,
+        description: data.description,
+        level: data.level,
+        status: data.status,
+        createdAt: data.createdAt?.toDate() || new Date(),
+      } as FitnessClass
+    })
+    .filter((cls) => cls.status === 'scheduled')
 }
 
 // Получение одного занятия по ID
@@ -87,6 +98,32 @@ export const updateClass = async (classId: string, data: Partial<FitnessClass>):
 export const deleteClass = async (classId: string): Promise<void> => {
   const classRef = doc(db, 'classes', classId)
   await deleteDoc(classRef)
+}
+
+// Получение количества записей для списка занятий
+export const getEnrollmentCounts = async (classIds: string[]): Promise<Record<string, number>> => {
+  if (classIds.length === 0) return {}
+
+  const enrollmentsRef = collection(db, 'enrollments')
+  const q = query(
+    enrollmentsRef,
+    where('classId', 'in', classIds),
+    where('status', '==', 'confirmed')
+  )
+
+  const snapshot = await getDocs(q)
+  const counts: Record<string, number> = {}
+
+  // Инициализация нулями
+  classIds.forEach((id) => (counts[id] = 0))
+
+  // Подсчёт
+  snapshot.docs.forEach((doc) => {
+    const classId = doc.data().classId
+    counts[classId] = (counts[classId] || 0) + 1
+  })
+
+  return counts
 }
 
 // ==================== ЗАПИСИ ====================
