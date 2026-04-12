@@ -99,15 +99,16 @@ export default function ClassDetailsPage() {
 
     setActionLoading(true)
     try {
-      await enrollInClass(classId, user.uid)
+      const newEnrollmentId = await enrollInClass(classId, user.uid)
       setIsEnrolled(true)
-      
+      setEnrollmentId(newEnrollmentId) // Сохранаем реальный ID для отмены
+
       // Обновляем счётчик на клиенте
       useScheduleStore.getState().incrementEnrollment(classId)
-      
+
       // Обновляем список записей локально
       const fakeEnrollment: Enrollment = {
-        enrollmentId: 'temp',
+        enrollmentId: newEnrollmentId,
         classId,
         userId: user.uid,
         enrolledAt: new Date(),
