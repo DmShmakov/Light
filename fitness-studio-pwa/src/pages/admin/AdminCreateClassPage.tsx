@@ -11,11 +11,15 @@ import Container from '@mui/material/Container'
 import MenuItem from '@mui/material/MenuItem'
 import Alert from '@mui/material/Alert'
 import IconButton from '@mui/material/IconButton'
+import Checkbox from '@mui/material/Checkbox'
+import FormControlLabel from '@mui/material/FormControlLabel'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker'
+import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFnsV3'
 import { ru } from 'date-fns/locale'
+import { addWeeks, isBefore, isSameDay } from 'date-fns'
 import { getClassById, createClass, updateClass } from '../../services/firestoreService'
 import { useAuthStore } from '../../store/authStore'
 import { FitnessClass } from '../../types'
@@ -29,7 +33,32 @@ const classSchema = z.object({
   maxParticipants: z.coerce.number().min(1, 'Минимум 1 участник').max(100),
   description: z.string().optional(),
   level: z.enum(['beginner', 'intermediate', 'advanced']),
-})
+  weekly: z.boolean().default(false),
+  weeklyEndDate: z.date().optional(),
+}).refine(
+  (data) => {
+    if (!data.weekly) return true
+    if (!data.weeklyEndDate) return false
+    // Дата окончания не более 1 года от startDateTime
+    const maxDate = addWeeks(data.startDateTime, 52)
+    return isBefore(data.weeklyEndDate, maxDate) || isSameDay(data.weeklyEndDate, maxDate)
+  },
+  {
+    message: 'Период повторений не более 1 года',
+    path: ['weeklyEndDate'],
+  }
+).refine(
+  (data) => {
+    if (!data.weekly) return true
+    if (!data.weeklyEndDate) return false
+    // Дата окончания должна быть позже startDateTime
+    return isBefore(data.startDateTime, data.weeklyEndDate)
+  },
+  {
+    message: 'Дата окончания должна быть позже даты начала',
+    path: ['weeklyEndDate'],
+  }
+)
 
 type ClassForm = z.infer<typeof classSchema>
 
@@ -72,6 +101,8 @@ export default function AdminCreateClassPage() {
       maxParticipants: 15,
       description: '',
       level: 'beginner',
+      weekly: false,
+      weeklyEndDate: undefined,
     },
   })
 
@@ -153,6 +184,31 @@ export default function AdminCreateClassPage() {
 
       if (isEditMode && classId) {
         await updateClass(classId, classData)
+      } else if (data.weekly && data.weeklyEndDate) {
+        // Создание серии еженедельных занятий
+        let currentDate = new Date(data.startDateTime)
+        const endDate = new Date(data.weeklyEndDate)
+        endDate.setHours(23, 59, 59, 999)
+
+        let createdCount = 0
+        while (isBefore(currentDate, endDate) || isSameDay(currentDate, endDate)) {
+          const sessionDuration = data.endDateTime.getTime() - data.startDateTime.getTime()
+          const sessionEnd = new Date(currentDate.getTime() + sessionDuration)
+
+          const weeklyClassData: Omit<FitnessClass, 'classId' | 'createdAt'> = {
+            ...classData,
+            startDateTime: new Date(currentDate),
+            endDateTime: sessionEnd,
+          }
+
+          await createClass(weeklyClassData)
+          createdCount++
+
+          // Следующая неделя
+          currentDate = addWeeks(currentDate, 1)
+        }
+
+        console.log(`Создано ${createdCount} еженедельных занятий`)
       } else {
         const newId = await createClass(classData)
         console.log('Создано занятие с ID:', newId)
@@ -328,8 +384,58 @@ export default function AdminCreateClassPage() {
             )}
           />
 
+          {/* Еженедельное повторение — только при создании, не при редактировании */}
+          {!isEditMode && (
+            <>
+              <Controller
+                name="weekly"
+                control={control}
+                render={({ field }) => (
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={field.value}
+                        onChange={(e) => field.onChange(e.target.checked)}
+                      />
+                    }
+                    label="Еженедельно (создать серию занятий)"
+                  />
+                )}
+              />
+
+              {watch('weekly') && (
+                <Controller
+                  name="weeklyEndDate"
+                  control={control}
+                  render={({ field }) => (
+                    <DatePicker
+                      label="Дата окончания периода"
+                      value={field.value || null}
+                      onChange={(date) => field.onChange(date)}
+                      minDate={addWeeks(watch('startDateTime') || new Date(), 1)}
+                      maxDate={addWeeks(watch('startDateTime') || new Date(), 52)}
+                      slotProps={{
+                        textField: {
+                          fullWidth: true,
+                          error: !!errors.weeklyEndDate,
+                          helperText: errors.weeklyEndDate?.message || 'Занятия будут создаваться раз в неделю до этой даты',
+                        },
+                      }}
+                    />
+                  )}
+                />
+              )}
+            </>
+          )}
+
           <Button type="submit" variant="contained" size="large" fullWidth disabled={loading}>
-            {loading ? 'Сохранение...' : isEditMode ? 'Сохранить изменения' : 'Создать занятие'}
+            {loading
+              ? 'Сохранение...'
+              : isEditMode
+              ? 'Сохранить изменения'
+              : watch('weekly')
+              ? 'Создать серию занятий'
+              : 'Создать занятие'}
           </Button>
         </Box>
       </Container>
