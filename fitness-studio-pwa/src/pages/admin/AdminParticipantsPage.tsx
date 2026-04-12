@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../../services/firebase'
 import Box from '@mui/material/Box'
@@ -13,6 +13,7 @@ import ListItemText from '@mui/material/ListItemText'
 import Skeleton from '@mui/material/Skeleton'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import DeleteIcon from '@mui/icons-material/Delete'
 import { getEnrollmentsForClass, getClassById, cancelEnrollment } from '../../services/firestoreService'
 import { Enrollment, FitnessClass, User } from '../../types'
@@ -23,6 +24,7 @@ interface EnrollmentWithUser extends Enrollment {
 
 export default function AdminParticipantsPage() {
   const { classId } = useParams<{ classId: string }>()
+  const navigate = useNavigate()
   const [enrollments, setEnrollments] = useState<EnrollmentWithUser[]>([])
   const [fitnessClass, setFitnessClass] = useState<FitnessClass | null>(null)
   const [loading, setLoading] = useState(true)
@@ -91,9 +93,14 @@ export default function AdminParticipantsPage() {
 
   return (
     <Container maxWidth="sm" sx={{ py: 2 }}>
-      <Typography variant="h5" component="h1" gutterBottom>
-        Участники: {fitnessClass?.title}
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+        <IconButton onClick={() => navigate('/admin/schedule')}>
+          <ArrowBackIcon />
+        </IconButton>
+        <Typography variant="h5" component="h1">
+          Участники: {fitnessClass?.title}
+        </Typography>
+      </Box>
 
       <Chip
         label={`Всего: ${enrollments.length} из ${fitnessClass?.maxParticipants}`}

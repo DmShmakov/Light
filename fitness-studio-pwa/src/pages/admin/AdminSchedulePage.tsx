@@ -8,6 +8,7 @@ import CardContent from '@mui/material/CardContent'
 import CardActions from '@mui/material/CardActions'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import Skeleton from '@mui/material/Skeleton'
 import Chip from '@mui/material/Chip'
 import Tooltip from '@mui/material/Tooltip'
@@ -64,10 +65,14 @@ export default function AdminSchedulePage() {
 
   return (
     <Container maxWidth="md" sx={{ py: 2 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+        <IconButton onClick={() => navigate('/admin')}>
+          <ArrowBackIcon />
+        </IconButton>
         <Typography variant="h5" component="h1">
           Управление расписанием
         </Typography>
+        <Box sx={{ flex: 1 }} />
         <Button variant="contained" onClick={() => navigate('/admin/schedule/create')}>
           Создать занятие
         </Button>
