@@ -17,7 +17,7 @@ import ShareIcon from '@mui/icons-material/Share'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { format, isPast, differenceInMinutes } from 'date-fns'
 import { ru } from 'date-fns/locale'
-import { getClassById, enrollInClass, cancelEnrollment, getEnrollmentsForClass } from '../services/firestoreService'
+import { getClassById, enrollInClass, cancelEnrollment, getEnrollmentsForClass, getUserEnrollments } from '../services/firestoreService'
 import { useAuthStore } from '../store/authStore'
 import { useScheduleStore } from '../store/scheduleStore'
 import { FitnessClass, Enrollment } from '../types'
@@ -32,6 +32,8 @@ export default function ClassDetailsPage() {
   const { classId } = useParams<{ classId: string }>()
   const navigate = useNavigate()
   const { user } = useAuthStore()
+  const isAdmin = user?.roles.includes('admin') ?? false
+  const enrollmentCounts = useScheduleStore((s) => s.enrollmentCounts)
   
   const [fitnessClass, setFitnessClass] = useState<FitnessClass | null>(null)
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
@@ -52,19 +54,31 @@ export default function ClassDetailsPage() {
 
       setLoading(true)
       try {
-        const [classData, enrollmentsData] = await Promise.all([
-          getClassById(classId),
-          getEnrollmentsForClass(classId),
-        ])
-
+        const classData = await getClassById(classId)
         setFitnessClass(classData)
-        setEnrollments(enrollmentsData)
 
-        // Проверка, записан ли пользователь
-        if (user) {
-          const userEnrollment = enrollmentsData.find((e) => e.userId === user.uid)
-          setIsEnrolled(!!userEnrollment)
-          setEnrollmentId(userEnrollment?.enrollmentId || null)
+        if (isAdmin) {
+          // Админ видит все записи
+          const enrollmentsData = await getEnrollmentsForClass(classId)
+          setEnrollments(enrollmentsData)
+
+          if (user) {
+            const userEnrollment = enrollmentsData.find((e) => e.userId === user.uid)
+            setIsEnrolled(!!userEnrollment)
+            setEnrollmentId(userEnrollment?.enrollmentId || null)
+          }
+        } else {
+          // Не-админ не видит список записей, только свой статус
+          setEnrollments([])
+
+          if (user) {
+            const userEnrollments = await getUserEnrollments(user.uid)
+            const myEnrollment = userEnrollments.find(
+              (e) => e.classId === classId && e.status === 'confirmed'
+            )
+            setIsEnrolled(!!myEnrollment)
+            setEnrollmentId(myEnrollment?.enrollmentId || null)
+          }
         }
       } catch (error) {
         console.error('Ошибка загрузки данных:', error)
@@ -239,7 +253,10 @@ export default function ClassDetailsPage() {
             </Typography>
 
             <Typography variant="body2">
-              <strong>Свободных мест:</strong> {fitnessClass.maxParticipants - enrollments.length} из {fitnessClass.maxParticipants}
+              <strong>Свободных мест:</strong>{' '}
+              {isAdmin
+                ? `${fitnessClass.maxParticipants - enrollments.length} из ${fitnessClass.maxParticipants}`
+                : `${enrollmentCounts[fitnessClass.classId] ?? 0} записано из ${fitnessClass.maxParticipants}`}
             </Typography>
 
             <Typography variant="body2">
@@ -249,28 +266,30 @@ export default function ClassDetailsPage() {
         </CardContent>
       </Card>
 
-      {/* Список участников */}
-      <Card sx={{ mb: 2 }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>
-            Записавшиеся ({enrollments.length})
-          </Typography>
-          
-          {enrollments.length > 0 ? (
-            <AvatarGroup max={5}>
-              {enrollments.slice(0, 10).map((enrollment) => (
-                <Avatar key={enrollment.enrollmentId} alt={enrollment.userId}>
-                  {enrollment.userId.charAt(0).toUpperCase()}
-                </Avatar>
-              ))}
-            </AvatarGroup>
-          ) : (
-            <Typography variant="body2" color="text.secondary">
-              Пока никто не записан
+      {/* Список участников — только для админов */}
+      {isAdmin && (
+        <Card sx={{ mb: 2 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Записавшиеся ({enrollments.length})
             </Typography>
-          )}
-        </CardContent>
-      </Card>
+
+            {enrollments.length > 0 ? (
+              <AvatarGroup max={5}>
+                {enrollments.slice(0, 10).map((enrollment) => (
+                  <Avatar key={enrollment.enrollmentId} alt={enrollment.userId}>
+                    {enrollment.userId.charAt(0).toUpperCase()}
+                  </Avatar>
+                ))}
+              </AvatarGroup>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                Пока никто не записан
+              </Typography>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Кнопки действий */}
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
