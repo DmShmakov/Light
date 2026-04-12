@@ -8,7 +8,6 @@ import CardActionArea from '@mui/material/CardActionArea'
 import EventIcon from '@mui/icons-material/Event'
 import PeopleIcon from '@mui/icons-material/People'
 import AddCircleIcon from '@mui/icons-material/AddCircle'
-import ListIcon from '@mui/icons-material/List'
 
 export default function AdminDashboardPage() {
   const navigate = useNavigate()
@@ -31,12 +30,6 @@ export default function AdminDashboardPage() {
       description: 'Список всех пользователей',
       icon: <PeopleIcon sx={{ fontSize: 40 }} />,
       path: '/admin/users',
-    },
-    {
-      title: 'Записи на занятия',
-      description: 'Просмотр участников по занятиям',
-      icon: <ListIcon sx={{ fontSize: 40 }} />,
-      path: '/admin/schedule',
     },
   ]
 
