@@ -25,7 +25,8 @@ test.describe('Расписание', () => {
     
     // Проверяем навигацию по неделям
     await expect(page.getByRole('button', { name: '' }).first()).toBeVisible() // ChevronLeft
-    await expect(page.getByRole('heading', { level: 6 })).toBeVisible() // Заголовок недели
+    // Заголовок недели — h6 с датами
+    await expect(page.getByRole('heading', { name: 'апреля' })).toBeVisible()
     await expect(page.getByRole('button', { name: '' }).last()).toBeVisible() // ChevronRight
   })
 
@@ -46,13 +47,13 @@ test.describe('Расписание', () => {
       test.skip(true, 'Firebase не настроен')
     }
     
-    // Проверяем что есть вкладки дней (7 штук — Пн, Вт, Ср...)
-    const tabs = page.locator('[role="tab"]')
-    await expect(tabs).toHaveCount(7)
-    
-    // Проверяем что можно переключаться между днями
-    await tabs.nth(1).click() // Вторник
-    await page.waitForTimeout(500)
+    // Проверяем что есть карточки дней (7 штук — аккордеон)
+    const dayHeaders = page.locator('.MuiCardHeader-root')
+    await expect(dayHeaders).toHaveCount(7)
+
+    // Проверяем что первый день (сегодня) раскрыт и содержит занятия или "Занятий нет"
+    const content = await page.locator('.MuiCollapse-root').first().isVisible({ timeout: 3000 })
+    expect(content).toBe(true)
   })
 
   test('расписание — карточка занятия содержит информацию', async ({ page }) => {
