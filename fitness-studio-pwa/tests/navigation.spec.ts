@@ -25,10 +25,10 @@ test.describe('Навигация по приложению', () => {
       test.skip(true, 'Firebase не настроен — регистрация не прошла')
     }
     
-    // Проверяем навигацию — нижняя панель (4 кнопки для админа)
+    // Проверяем навигацию — нижняя панель (3 кнопки для обычного пользователя)
     await expect(page.getByRole('button', { name: 'Расписание' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Мои записи' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Админ' })).toBeVisible()
+    // Кнопка "Админ" только для роли admin — у обычного пользователя её нет
     await expect(page.getByRole('button', { name: 'Профиль' })).toBeVisible()
   })
 

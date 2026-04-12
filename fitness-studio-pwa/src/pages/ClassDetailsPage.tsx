@@ -19,6 +19,7 @@ import { format, isPast, differenceInMinutes } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { getClassById, enrollInClass, cancelEnrollment, getEnrollmentsForClass } from '../services/firestoreService'
 import { useAuthStore } from '../store/authStore'
+import { useScheduleStore } from '../store/scheduleStore'
 import { FitnessClass, Enrollment } from '../types'
 
 const levelLabels: Record<string, string> = {
@@ -86,6 +87,21 @@ export default function ClassDetailsPage() {
     try {
       await enrollInClass(classId, user.uid)
       setIsEnrolled(true)
+      
+      // Обновляем счётчик на клиенте
+      useScheduleStore.getState().incrementEnrollment(classId)
+      
+      // Обновляем список записей локально
+      const fakeEnrollment: Enrollment = {
+        enrollmentId: 'temp',
+        classId,
+        userId: user.uid,
+        enrolledAt: new Date(),
+        status: 'confirmed',
+        waitlistPosition: null,
+      }
+      setEnrollments((prev) => [...prev, fakeEnrollment])
+      
       setSnackbar({
         open: true,
         message: 'Вы успешно записаны на занятие!',
@@ -110,6 +126,13 @@ export default function ClassDetailsPage() {
     try {
       await cancelEnrollment(enrollmentId)
       setIsEnrolled(false)
+      
+      // Обновляем счётчик на клиенте
+      useScheduleStore.getState().decrementEnrollment(classId!)
+      
+      // Обновляем список записей локально
+      setEnrollments((prev) => prev.filter((e) => e.enrollmentId !== enrollmentId))
+      
       setSnackbar({
         open: true,
         message: 'Запись отменена.',

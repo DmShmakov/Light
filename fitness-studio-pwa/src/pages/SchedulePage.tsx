@@ -37,9 +37,8 @@ const levelLabels: Record<string, string> = {
 
 export default function SchedulePage() {
   const navigate = useNavigate()
-  const { classes, loading, setLoading, selectedWeekStart, setSelectedWeekStart } = useScheduleStore()
+  const { classes, loading, setLoading, selectedWeekStart, setSelectedWeekStart, enrollmentCounts } = useScheduleStore()
   const [selectedDay, setSelectedDay] = useState(0)
-  const [enrollmentCounts, setEnrollmentCounts] = useState<Record<string, number>>({})
 
   // Получение дней текущей недели
   const weekDays = Array.from({ length: 7 }, (_, i) => {
@@ -63,7 +62,7 @@ export default function SchedulePage() {
         // Загрузка количества записей
         const classIds = fetchedClasses.map((c) => c.classId)
         const counts = await getEnrollmentCounts(classIds)
-        setEnrollmentCounts(counts)
+        useScheduleStore.getState().setEnrollmentCounts(counts)
       } catch (error) {
         console.error('Ошибка загрузки расписания:', error)
       } finally {
