@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { doc, getDoc } from 'firebase/firestore'
+import { db } from '../../services/firebase'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import Container from '@mui/material/Container'
@@ -12,12 +14,16 @@ import Skeleton from '@mui/material/Skeleton'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
 import DeleteIcon from '@mui/icons-material/Delete'
-import { getEnrollmentsForClass, getClassById } from '../../services/firestoreService'
-import { Enrollment, FitnessClass } from '../../types'
+import { getEnrollmentsForClass, getClassById, cancelEnrollment } from '../../services/firestoreService'
+import { Enrollment, FitnessClass, User } from '../../types'
+
+interface EnrollmentWithUser extends Enrollment {
+  user: User | null
+}
 
 export default function AdminParticipantsPage() {
   const { classId } = useParams<{ classId: string }>()
-  const [enrollments, setEnrollments] = useState<Enrollment[]>([])
+  const [enrollments, setEnrollments] = useState<EnrollmentWithUser[]>([])
   const [fitnessClass, setFitnessClass] = useState<FitnessClass | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -33,7 +39,19 @@ export default function AdminParticipantsPage() {
         ])
 
         setFitnessClass(classData)
-        setEnrollments(enrollmentsData)
+
+        // Загружаем данные пользователей
+        const enrollmentsWithUsers: EnrollmentWithUser[] = await Promise.all(
+          enrollmentsData.map(async (enrollment) => {
+            const userDoc = await getDoc(doc(db, 'users', enrollment.userId))
+            return {
+              ...enrollment,
+              user: userDoc.exists() ? (userDoc.data() as User) : null,
+            }
+          })
+        )
+
+        setEnrollments(enrollmentsWithUsers)
       } catch (error) {
         console.error('Ошибка загрузки:', error)
       } finally {
@@ -47,8 +65,14 @@ export default function AdminParticipantsPage() {
   const handleRemoveParticipant = async (enrollmentId: string) => {
     if (!confirm('Удалить участника из записи?')) return
 
-    // TODO: Реализовать удаление с обновлением списка
-    console.log('Удалить участника:', enrollmentId)
+    try {
+      await cancelEnrollment(enrollmentId)
+      // Обновляем список локально
+      setEnrollments((prev) => prev.filter((e) => e.enrollmentId !== enrollmentId))
+    } catch (error) {
+      console.error('Ошибка удаления:', error)
+      alert('Ошибка удаления участника')
+    }
   }
 
   if (loading) {
@@ -85,30 +109,43 @@ export default function AdminParticipantsPage() {
         </Box>
       ) : (
         <List>
-          {enrollments.map((enrollment) => (
-            <ListItem
-              key={enrollment.enrollmentId}
-              secondaryAction={
-                <IconButton
-                  edge="end"
-                  color="error"
-                  onClick={() => handleRemoveParticipant(enrollment.enrollmentId)}
-                >
-                  <DeleteIcon />
-                </IconButton>
-              }
-            >
-              <ListItemAvatar>
-                <Avatar>
-                  {enrollment.userId.charAt(0).toUpperCase()}
-                </Avatar>
-              </ListItemAvatar>
-              <ListItemText
-                primary={enrollment.userId}
-                secondary={`Записан: ${new Date(enrollment.enrolledAt).toLocaleString('ru-RU')}`}
-              />
-            </ListItem>
-          ))}
+          {enrollments.map((enrollment) => {
+            const userName = enrollment.user?.name || 'Неизвестный'
+            const userPhone = enrollment.user?.phone || 'Не указан'
+            const userAvatar = enrollment.user?.photoUrl
+
+            return (
+              <ListItem
+                key={enrollment.enrollmentId}
+                secondaryAction={
+                  <IconButton
+                    edge="end"
+                    color="error"
+                    onClick={() => handleRemoveParticipant(enrollment.enrollmentId)}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                }
+              >
+                <ListItemAvatar>
+                  <Avatar src={userAvatar || undefined}>
+                    {userName.charAt(0).toUpperCase()}
+                  </Avatar>
+                </ListItemAvatar>
+                <ListItemText
+                  primary={userName}
+                  secondary={
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      <span>📞 {userPhone}</span>
+                      <span style={{ fontSize: '0.75rem', color: 'text.secondary' }}>
+                        Записан: {new Date(enrollment.enrolledAt).toLocaleString('ru-RU')}
+                      </span>
+                    </Box>
+                  }
+                />
+              </ListItem>
+            )
+          })}
         </List>
       )}
     </Container>
