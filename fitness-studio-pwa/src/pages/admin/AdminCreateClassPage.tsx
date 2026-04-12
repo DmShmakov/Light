@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -55,6 +55,7 @@ export default function AdminCreateClassPage() {
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const endDateTimeSet = useRef(false) // Была ли установлена дата окончания
 
   const {
     handleSubmit,
@@ -101,19 +102,29 @@ export default function AdminCreateClassPage() {
   }, [isEditMode, classId, setValue])
 
   // Автозаполнение endDateTime = startDateTime + 1 час
+  // Только если endDateTime ещё не была установлена (новый режим или пользователь не менял)
   const startDateTimeValue = watch('startDateTime')
   useEffect(() => {
+    if (endDateTimeSet.current) return // уже установлена — не трогаем
+
     if (startDateTimeValue) {
       const endDate = new Date(startDateTimeValue)
       endDate.setHours(endDate.getHours() + 1)
 
-      // Проверяем, не было ли уже установлено значение
       const currentEnd = watch('endDateTime')
       if (!currentEnd) {
         setValue('endDateTime', endDate, { shouldValidate: true })
       }
     }
   }, [startDateTimeValue])
+
+  // Пометить, что endDateTime была загружена из базы или установлена
+  const endDateTimeWatch = watch('endDateTime')
+  useEffect(() => {
+    if (endDateTimeWatch) {
+      endDateTimeSet.current = true
+    }
+  }, [endDateTimeWatch])
 
   const onSubmit = async (data: ClassForm) => {
     setLoading(true)
