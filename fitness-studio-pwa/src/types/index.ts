@@ -38,6 +38,7 @@ export interface Enrollment {
   enrollmentId: string
   classId: string
   userId: string
+  classDate: Date
   enrolledAt: Date
   status: 'confirmed' | 'cancelled'
   waitlistPosition?: number | null

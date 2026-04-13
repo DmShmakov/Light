@@ -129,6 +129,35 @@ export const getEnrollmentCounts = async (classIds: string[]): Promise<Record<st
 
 // ==================== ЗАПИСИ ====================
 
+// Получение записей пользователя по диапазону дат занятий
+export const getUserEnrollmentsByDateRange = async (
+  userId: string,
+  startDate: Date,
+  endDate: Date
+): Promise<Enrollment[]> => {
+  const enrollmentsRef = collection(db, 'enrollments')
+
+  const q = query(
+    enrollmentsRef,
+    where('userId', '==', userId),
+    where('classDate', '>=', Timestamp.fromDate(startDate)),
+    where('classDate', '<=', Timestamp.fromDate(endDate)),
+    where('status', '==', 'confirmed')
+  )
+
+  const snapshot = await getDocs(q)
+
+  return snapshot.docs.map((d) => {
+    const data = d.data()
+    return {
+      enrollmentId: d.id,
+      ...data,
+      classDate: data.classDate?.toDate() ?? new Date(data.enrolledAt.toDate()),
+      enrolledAt: data.enrolledAt.toDate(),
+    }
+  }) as Enrollment[]
+}
+
 // Получение записей пользователя
 export const getUserEnrollments = async (userId: string): Promise<Enrollment[]> => {
   const enrollmentsRef = collection(db, 'enrollments')
@@ -139,11 +168,15 @@ export const getUserEnrollments = async (userId: string): Promise<Enrollment[]> 
   )
 
   const snapshot = await getDocs(q)
-  return snapshot.docs.map((doc) => ({
-    enrollmentId: doc.id,
-    ...doc.data(),
-    enrolledAt: doc.data().enrolledAt.toDate(),
-  })) as Enrollment[]
+  return snapshot.docs.map((doc) => {
+    const data = doc.data()
+    return {
+      enrollmentId: doc.id,
+      ...data,
+      classDate: data.classDate?.toDate() ?? new Date(data.enrolledAt.toDate()),
+      enrolledAt: data.enrolledAt.toDate(),
+    }
+  }) as Enrollment[]
 }
 
 // Получение записей для занятия
@@ -156,19 +189,24 @@ export const getEnrollmentsForClass = async (classId: string): Promise<Enrollmen
   )
 
   const snapshot = await getDocs(q)
-  return snapshot.docs.map((doc) => ({
-    enrollmentId: doc.id,
-    ...doc.data(),
-    enrolledAt: doc.data().enrolledAt.toDate(),
-  })) as Enrollment[]
+  return snapshot.docs.map((doc) => {
+    const data = doc.data()
+    return {
+      enrollmentId: doc.id,
+      ...data,
+      classDate: data.classDate?.toDate() ?? new Date(data.enrolledAt.toDate()),
+      enrolledAt: data.enrolledAt.toDate(),
+    }
+  }) as Enrollment[]
 }
 
 // Запись на занятие
-export const enrollInClass = async (classId: string, userId: string): Promise<string> => {
+export const enrollInClass = async (classId: string, userId: string, classDate: Date): Promise<string> => {
   const enrollmentsRef = collection(db, 'enrollments')
   const docRef = await addDoc(enrollmentsRef, {
     classId,
     userId,
+    classDate: Timestamp.fromDate(classDate),
     enrolledAt: serverTimestamp(),
     status: 'confirmed',
     waitlistPosition: null,

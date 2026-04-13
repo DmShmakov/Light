@@ -160,4 +160,47 @@ test.describe('Расписание', () => {
       page.getByText('Вы записаны на это занятие').or(page.getByRole('button', { name: 'Записаться' }))
     ).toBeVisible()
   })
+
+  test('расписание — бейдж «Вы записаны» на занятии', async ({ page }) => {
+    // Логинимся как админ
+    await loginAsAdmin(page)
+
+    // Переходим на страницу расписания
+    await page.goto('/')
+    await page.waitForTimeout(2000)
+
+    // Находим любое доступное занятие и переходим на страницу деталей
+    const detailButtons = page.locator('button:has-text("Подробнее")')
+    const detailCount = await detailButtons.count()
+
+    if (detailCount === 0) {
+      test.skip(true, 'Нет занятий в расписании')
+    }
+
+    // Запоминаем заголовок первого занятия (название)
+    const firstClassTitle = await page.locator('.MuiTypography-subtitle1').first().innerText()
+
+    // Переходим на страницу деталей
+    await detailButtons.first().click()
+    await page.waitForURL(/\/class\//, { timeout: 10000 })
+
+    // Записываемся на занятие (если ещё не записаны)
+    const enrollButton = page.getByRole('button', { name: 'Записаться' })
+    const enrollVisible = await enrollButton.isVisible({ timeout: 3000 }).catch(() => false)
+
+    if (enrollVisible) {
+      await enrollButton.click()
+      await expect(page.getByText('Вы успешно записаны')).toBeVisible({ timeout: 5000 })
+    }
+
+    // Возвращаемся на расписание
+    await page.goto('/')
+    await page.waitForTimeout(2000)
+
+    // Проверяем что бейдж «Вы записаны» отображается рядом с занятием
+    const enrolledBadge = page.getByRole('chip', { name: 'Вы записаны' })
+    const badgeVisible = await enrolledBadge.isVisible({ timeout: 5000 }).catch(() => false)
+
+    expect(badgeVisible).toBe(true)
+  })
 })

@@ -16,10 +16,12 @@ import Divider from '@mui/material/Divider'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import { format, addWeeks, isToday, isPast, isSameDay } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { useScheduleStore } from '../store/scheduleStore'
-import { getClassesByWeek, getEnrollmentCounts } from '../services/firestoreService'
+import { useAuthStore } from '../store/authStore'
+import { getClassesByWeek, getEnrollmentCounts, getUserEnrollmentsByDateRange } from '../services/firestoreService'
 import { FitnessClass } from '../types'
 
 // Маппинг типов занятий на цвета
@@ -45,7 +47,9 @@ interface DayGroup {
 export default function SchedulePage() {
   const navigate = useNavigate()
   const { classes, loading, setLoading, selectedWeekStart, setSelectedWeekStart, enrollmentCounts } = useScheduleStore()
+  const { user } = useAuthStore()
   const [expandedDay, setExpandedDay] = useState<string | null>(null)
+  const [userEnrolledClassIds, setUserEnrolledClassIds] = useState<Set<string>>(new Set())
 
   // Загрузка занятий при изменении недели
   useEffect(() => {
@@ -63,6 +67,15 @@ export default function SchedulePage() {
         const classIds = fetchedClasses.map((c) => c.classId)
         const counts = await getEnrollmentCounts(classIds)
         useScheduleStore.getState().setEnrollmentCounts(counts)
+
+        // Загрузка записей текущего пользователя только для диапазона дат недели
+        if (user) {
+          const enrollments = await getUserEnrollmentsByDateRange(user.uid, selectedWeekStart, endDate)
+          const enrolledIds = new Set(enrollments.map((e) => e.classId))
+          setUserEnrolledClassIds(enrolledIds)
+        } else {
+          setUserEnrolledClassIds(new Set())
+        }
       } catch (error) {
         console.error('Ошибка загрузки расписания:', error)
       } finally {
@@ -71,7 +84,7 @@ export default function SchedulePage() {
     }
 
     loadClasses()
-  }, [selectedWeekStart, setLoading])
+  }, [selectedWeekStart, setLoading, user])
 
   // Группировка занятий по дням
   const dayGroups: DayGroup[] = []
@@ -182,6 +195,7 @@ export default function SchedulePage() {
                 const isPastClass = isPast(new Date(cls.endDateTime))
                 const enrolled = enrollmentCounts[cls.classId] || 0
                 const available = cls.maxParticipants - enrolled
+                const isUserEnrolled = userEnrolledClassIds.has(cls.classId)
 
                 return (
                   <Box key={cls.classId} sx={{ mb: 2 }}>
@@ -210,6 +224,16 @@ export default function SchedulePage() {
                         ? 'Мест нет'
                         : `${available} из ${cls.maxParticipants} мест (записано: ${enrolled})`}
                     </Typography>
+
+                    {isUserEnrolled && (
+                      <Chip
+                        icon={<CheckCircleIcon />}
+                        label="Вы записаны"
+                        size="small"
+                        color="success"
+                        sx={{ mb: 0.5 }}
+                      />
+                    )}
 
                     <CardActions sx={{ px: 0, pt: 0 }}>
                       <Button

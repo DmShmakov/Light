@@ -92,14 +92,14 @@ export default function ClassDetailsPage() {
 
   // Запись на занятие
   const handleEnroll = async () => {
-    if (!user || !classId) {
+    if (!user || !classId || !fitnessClass) {
       navigate('/login')
       return
     }
 
     setActionLoading(true)
     try {
-      const newEnrollmentId = await enrollInClass(classId, user.uid)
+      const newEnrollmentId = await enrollInClass(classId, user.uid, fitnessClass.startDateTime)
       setIsEnrolled(true)
       setEnrollmentId(newEnrollmentId) // Сохранаем реальный ID для отмены
 
@@ -111,6 +111,7 @@ export default function ClassDetailsPage() {
         enrollmentId: newEnrollmentId,
         classId,
         userId: user.uid,
+        classDate: fitnessClass.startDateTime,
         enrolledAt: new Date(),
         status: 'confirmed',
         waitlistPosition: null,
