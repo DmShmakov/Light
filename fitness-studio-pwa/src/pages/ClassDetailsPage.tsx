@@ -88,7 +88,7 @@ export default function ClassDetailsPage() {
     }
 
     loadData()
-  }, [classId, user])
+  }, [classId, user, isAdmin])
 
   // Запись на занятие
   const handleEnroll = async () => {
@@ -122,10 +122,11 @@ export default function ClassDetailsPage() {
         message: 'Вы успешно записаны на занятие!',
         severity: 'success',
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Ошибка записи. Попробуйте ещё раз.'
       setSnackbar({
         open: true,
-        message: error.message || 'Ошибка записи. Попробуйте ещё раз.',
+        message,
         severity: 'error',
       })
     } finally {
@@ -153,10 +154,11 @@ export default function ClassDetailsPage() {
         message: 'Запись отменена.',
         severity: 'info',
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Ошибка отмены. Попробуйте ещё раз.'
       setSnackbar({
         open: true,
-        message: error.message || 'Ошибка отмены. Попробуйте ещё раз.',
+        message,
         severity: 'error',
       })
     } finally {
@@ -175,7 +177,7 @@ export default function ClassDetailsPage() {
           text: `Записывайся на ${fitnessClass?.title}!`,
           url: shareUrl,
         })
-      } catch (err) {
+      } catch {
         // Пользователь отменил partage
       }
     } else {
@@ -187,7 +189,7 @@ export default function ClassDetailsPage() {
           message: 'Ссылка скопирована в буфер обмена',
           severity: 'success',
         })
-      } catch (err) {
+      } catch {
         setSnackbar({
           open: true,
           message: 'Не удалось скопировать ссылку',

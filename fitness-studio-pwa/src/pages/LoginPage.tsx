@@ -45,8 +45,9 @@ export default function LoginPage() {
       setError(null)
       await loginWithEmail(data.email, data.password)
       navigate('/')
-    } catch (err: any) {
-      setError(err.message || 'Ошибка входа. Проверьте данные.')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Ошибка входа. Проверьте данные.'
+      setError(message)
     } finally {
       setLoading(false)
     }
@@ -58,8 +59,9 @@ export default function LoginPage() {
       setError(null)
       await loginWithGoogle()
       navigate('/')
-    } catch (err: any) {
-      setError(err.message || 'Ошибка входа через Google.')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Ошибка входа через Google.'
+      setError(message)
     } finally {
       setLoading(false)
     }

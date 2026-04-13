@@ -44,7 +44,7 @@ export default function AdminSchedulePage() {
     }
 
     loadClasses()
-  }, [selectedWeekStart])
+  }, [selectedWeekStart, setLoading])
 
   // Удаление занятия
   const handleDelete = async (classId: string) => {

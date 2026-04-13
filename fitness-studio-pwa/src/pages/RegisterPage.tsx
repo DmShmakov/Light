@@ -50,8 +50,9 @@ export default function RegisterPage() {
       setError(null)
       await registerWithEmail(data.email, data.password, data.name, data.phone)
       navigate('/')
-    } catch (err: any) {
-      setError(err.message || 'Ошибка регистрации. Попробуйте ещё раз.')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Ошибка регистрации. Попробуйте ещё раз.'
+      setError(message)
     } finally {
       setLoading(false)
     }

@@ -48,7 +48,7 @@ test.describe('Форма создания/редактирования заня
       { name: 'description', label: 'Описание' },
     ]
     
-    for (const { name, label } of fields) {
+    for (const { label } of fields) {
       const labelEl = page.locator(`label:has-text("${label}")`).first()
       await expect(labelEl).toBeVisible()
       

@@ -147,6 +147,7 @@ export default function AdminCreateClassPage() {
         setValue('endDateTime', endDate, { shouldValidate: true })
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startDateTimeValue])
 
   // Пометить, что endDateTime была загружена из базы или установлена
@@ -215,11 +216,10 @@ export default function AdminCreateClassPage() {
       }
 
       navigate('/admin/schedule')
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Ошибка сохранения. Попробуйте ещё раз.'
       console.error('Ошибка создания занятия:', err)
-      console.error('Code:', err.code)
-      console.error('Message:', err.message)
-      setError(err.message || 'Ошибка сохранения. Попробуйте ещё раз.')
+      setError(message)
     } finally {
       setLoading(false)
     }

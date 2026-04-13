@@ -23,9 +23,9 @@ export const storage = getStorage(app)
 
 // Messaging инициализируется лениво (только когда нужен)
 let _messaging: ReturnType<typeof import('firebase/messaging').getMessaging> | null = null
-export const getMessagingService = () => {
+export const getMessagingService = async () => {
   if (!_messaging) {
-    const { getMessaging } = require('firebase/messaging')
+    const { getMessaging } = await import('firebase/messaging')
     _messaging = getMessaging(app)
   }
   return _messaging

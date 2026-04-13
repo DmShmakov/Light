@@ -37,8 +37,9 @@ export default function PasswordRecoveryPage() {
       setError(null)
       await resetPassword(data.email)
       setSuccess(true)
-    } catch (err: any) {
-      setError(err.message || 'Ошибка отправки письма. Попробуйте ещё раз.')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Ошибка отправки письма. Попробуйте ещё раз.'
+      setError(message)
     } finally {
       setLoading(false)
     }

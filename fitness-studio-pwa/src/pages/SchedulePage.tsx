@@ -71,7 +71,7 @@ export default function SchedulePage() {
     }
 
     loadClasses()
-  }, [selectedWeekStart])
+  }, [selectedWeekStart, setLoading])
 
   // Группировка занятий по дням
   const dayGroups: DayGroup[] = []
@@ -108,6 +108,7 @@ export default function SchedulePage() {
     if (todayGroup && !expandedDay) {
       setExpandedDay(format(todayGroup.date, 'yyyy-MM-dd'))
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dayGroups, classes])
 
   // Навигация по неделям

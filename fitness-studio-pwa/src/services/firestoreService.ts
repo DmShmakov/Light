@@ -82,7 +82,8 @@ export const createClass = async (classData: Omit<FitnessClass, 'classId' | 'cre
 // Обновление занятия (только админ)
 export const updateClass = async (classId: string, data: Partial<FitnessClass>): Promise<void> => {
   const classRef = doc(db, 'classes', classId)
-  const updateData: any = { ...data }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const updateData: Record<string, any> = { ...data }
 
   if (data.startDateTime) {
     updateData.startDateTime = Timestamp.fromDate(data.startDateTime)
