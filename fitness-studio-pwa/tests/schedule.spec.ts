@@ -1,7 +1,43 @@
 import { test, expect } from '@playwright/test'
 
+const ADMIN_USER = {
+  email: 'test-admin@test.com',
+  password: 'testpass123',
+}
+
+async function loginAsAdmin(page: ReturnType<typeof test['page']>) {
+  // Сначала пробуем перейти на главную — если залогинен, останемся тут
+  await page.goto('/')
+  await page.waitForTimeout(1000)
+
+  // Если редиректнуло на /welcome или /login — не залогинен
+  if (page.url().includes('/welcome') || page.url().includes('/login')) {
+    await page.goto('/login')
+    await page.waitForTimeout(500)
+    await page.getByLabel('Email').fill(ADMIN_USER.email)
+    await page.getByLabel('Пароль').fill(ADMIN_USER.password)
+    await page.getByRole('button', { name: 'Войти', exact: true }).click()
+    await page.waitForURL(/\/$/, { timeout: 10000 })
+  } else {
+    // Уже залогинен — выходим и логинимся как админ
+    await page.goto('/profile')
+    await page.waitForTimeout(1000)
+    const logoutButton = page.getByRole('button', { name: 'Выйти' })
+    if (await logoutButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await logoutButton.click()
+      await page.waitForTimeout(1000)
+    }
+    await page.goto('/login')
+    await page.waitForTimeout(500)
+    await page.getByLabel('Email').fill(ADMIN_USER.email)
+    await page.getByLabel('Пароль').fill(ADMIN_USER.password)
+    await page.getByRole('button', { name: 'Войти', exact: true }).click()
+    await page.waitForURL(/\/$/, { timeout: 10000 })
+  }
+}
+
 test.describe('Расписание', () => {
-  
+
   test('расписание — отображается после авторизации', async ({ page }) => {
     await page.goto('/register')
     
@@ -57,8 +93,71 @@ test.describe('Расписание', () => {
   })
 
   test('расписание — карточка занятия содержит информацию', async ({ page }) => {
-    // Этот тест требует полного цикла: регистрация + админка + создание + проверка
-    // Пока скипаем — Firebase должен быть настроен
-    test.skip(true, 'Требует настроенный Firebase — создай занятие вручную и запусти тест')
+    // Логинимся как админ
+    await loginAsAdmin(page)
+
+    // Переходим в админ-расписание
+    await page.goto('/admin/schedule')
+    await page.waitForTimeout(2000)
+
+    // Находим кнопку редактирования первого занятия
+    const cardActions = page.locator('.MuiCardActions-root')
+    const cardActionsCount = await cardActions.count()
+
+    if (cardActionsCount === 0) {
+      test.skip(true, 'Нет занятий в админ-расписании')
+    }
+
+    // Первый CardActions — первое занятие. Первая кнопка — редактировать.
+    const firstEditButton = cardActions.first().locator('.MuiIconButton-root').first()
+    await firstEditButton.click()
+    await page.waitForTimeout(1000)
+
+    const match = page.url().match(/\/admin\/schedule\/edit\/([^/?]+)/)
+    if (!match) {
+      test.skip(true, 'Не удалось получить ID занятия — клик не привёл к редактированию')
+    }
+    const classId = match[1]
+
+    // Возвращаемся
+    await page.goto('/admin/schedule')
+    await page.waitForTimeout(500)
+
+    // Переходим на страницу деталей занятия
+    await page.goto(`/class/${classId}`)
+    await page.waitForTimeout(2000)
+
+    // Проверяем что страница деталей содержит информацию о занятии
+    // Заголовок — h1 (MUI Typography variant="h4" рендерится как h1 в этом контексте)
+    const heading = page.getByRole('heading', { level: 1 })
+    await expect(heading).toBeVisible()
+    const titleText = await heading.innerText()
+    expect(titleText.length).toBeGreaterThan(0)
+
+    await expect(page.getByText(/Тренер:/)).toBeVisible()
+    await expect(page.getByText(/Дата и время:/)).toBeVisible()
+    await expect(page.getByText(/Свободных мест:/)).toBeVisible()
+    await expect(page.getByText(/Статус:/)).toBeVisible()
+
+    // Запись или подтверждение
+    const enrollBtn = page.getByRole('button', { name: 'Записаться' })
+    const enrolledMsg = page.getByText('Вы записаны на это занятие')
+    const enrollVisible = await enrollBtn.isVisible({ timeout: 3000 }).catch(() => false)
+    const enrolledVisible = await enrolledMsg.isVisible({ timeout: 3000 }).catch(() => false)
+
+    if (!enrollVisible && !enrolledVisible) {
+      throw new Error('Нет ни кнопки записи, ни подтверждения записи')
+    }
+
+    if (enrollVisible && !enrolledVisible) {
+      await enrollBtn.click()
+      await expect(page.getByRole('alert')).toBeVisible({ timeout: 5000 })
+      await expect(page.getByText('Вы успешно записаны')).toBeVisible({ timeout: 5000 })
+    }
+
+    // Финальная проверка: или кнопка записи, или подтверждение
+    await expect(
+      page.getByText('Вы записаны на это занятие').or(page.getByRole('button', { name: 'Записаться' }))
+    ).toBeVisible()
   })
 })

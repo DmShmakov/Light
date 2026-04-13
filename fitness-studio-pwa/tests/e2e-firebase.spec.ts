@@ -136,36 +136,43 @@ test.describe('E2E: Полный цикл с Firebase', () => {
 
   test('расписание — запись на занятие', async ({ page }) => {
     await loginViaUI(page)
-    
-    // Идём на главную (расписание)
+
+    // Идём на расписание
     await page.goto('/')
     await page.waitForTimeout(2000)
-    
-    // Ищем карточку занятия и кликаем "Подробнее"
-    const firstClassButton = page.locator('button:has-text("Подробнее")').first()
-    if (await firstClassButton.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await firstClassButton.click()
-      await page.waitForTimeout(2000)
-      
-      // Проверяем страницу деталей
-      expect(page.url()).toContain('/class/')
-      
-      // Ищем кнопку "Записаться"
+
+    // Шаг 1: Ищем уже существующее занятие — раскрываем день и кликаем "Подробнее"
+    // Кнопка "Подробнее" — это MUI Button size="small" внутри карточки дня
+    const detailButtons = page.locator('button:has-text("Подробнее")')
+    const detailCount = await detailButtons.count()
+
+    if (detailCount > 0) {
+      // Кликаем первую доступную кнопку "Подробнее"
+      await detailButtons.first().click()
+      await page.waitForURL(/\/class\//, { timeout: 10000 })
+
+      // Проверяем что попали на страницу деталей
+      await expect(page).toHaveURL(/\/class\/.+/)
+
+      // Ищем кнопку "Записаться" (если ещё не записаны)
       const enrollButton = page.getByRole('button', { name: 'Записаться' })
-      if (await enrollButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+      const enrollVisible = await enrollButton.isVisible({ timeout: 3000 }).catch(() => false)
+
+      if (enrollVisible) {
         await enrollButton.click()
-        await page.waitForTimeout(2000)
-        
-        // Проверяем Alert об успехе
-        const successAlert = page.getByRole('alert').or(page.getByText('Вы успешно записаны'))
-        const isVisible = await successAlert.isVisible({ timeout: 3000 }).catch(() => false)
-        
-        if (isVisible) {
-          await expect(page.getByText('Вы записаны на это занятие')).toBeVisible()
-        }
+
+        // Ждём Snackbar с подтверждением
+        await expect(page.getByRole('alert')).toBeVisible({ timeout: 5000 })
+        await expect(page.getByText('Вы успешно записаны')).toBeVisible({ timeout: 5000 })
+
+        // Кнопка должна смениться на "Вы записаны"
+        await expect(page.getByText('Вы записаны на это занятие')).toBeVisible({ timeout: 5000 })
+      } else {
+        // Уже записан — проверяем что видно подтверждение
+        await expect(page.getByText('Вы записаны на это занятие')).toBeVisible({ timeout: 5000 })
       }
     } else {
-      test.skip(true, 'Нет занятий в расписании — создай занятие через админку')
+      test.skip(true, 'Нет занятий в расписании — создайте занятие через админ-панель')
     }
   })
 
