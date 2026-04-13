@@ -151,7 +151,7 @@ export default function SchedulePage() {
           }
           subheader={
             <Typography variant="body2" color="text.secondary">
-              {format(dayGroup.date, 'd MMMM')} · {classCount} {classCount === 1 ? 'занятие' : classCount < 5 ? 'занятия' : 'занятий'}
+              {format(dayGroup.date, 'd MMMM', { locale: ru })} · {classCount} {classCount === 1 ? 'занятие' : classCount < 5 ? 'занятия' : 'занятий'}
             </Typography>
           }
           action={
