@@ -17,7 +17,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
-import { format, addWeeks, isToday, isPast, isSameDay } from 'date-fns'
+import { format, addDays, isToday, isPast, isSameDay } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { useScheduleStore } from '../store/scheduleStore'
 import { useAuthStore } from '../store/authStore'
@@ -268,7 +268,7 @@ export default function SchedulePage() {
 
         <Typography variant="h6" align="center">
           {format(selectedWeekStart, 'd MMMM', { locale: ru })} —{' '}
-          {format(addWeeks(selectedWeekStart, 1), 'd MMMM yyyy', { locale: ru })}
+          {format(addDays(selectedWeekStart, 6), 'd MMMM yyyy', { locale: ru })}
         </Typography>
 
         <IconButton onClick={goToNextWeek}>
