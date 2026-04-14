@@ -98,7 +98,7 @@ export default function ProfilePage() {
 
       <List>
         <ListItem disablePadding>
-          <ListItemButton>
+          <ListItemButton onClick={() => navigate('/notifications')}>
             <ListItemIcon>
               <NotificationIcon />
             </ListItemIcon>

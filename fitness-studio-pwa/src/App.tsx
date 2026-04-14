@@ -13,6 +13,7 @@ import SchedulePage from './pages/SchedulePage'
 import ClassDetailsPage from './pages/ClassDetailsPage'
 import MyEnrollmentsPage from './pages/MyEnrollmentsPage'
 import ProfilePage from './pages/ProfilePage'
+import NotificationSettingsPage from './pages/NotificationSettingsPage'
 
 // Admin pages
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
@@ -20,6 +21,9 @@ import AdminSchedulePage from './pages/admin/AdminSchedulePage'
 import AdminCreateClassPage from './pages/admin/AdminCreateClassPage'
 import AdminParticipantsPage from './pages/admin/AdminParticipantsPage'
 import AdminUsersPage from './pages/admin/AdminUsersPage'
+
+// Notification handler
+import { NotificationHandler } from './components/NotificationSnackbar'
 
 // Loading component
 import CircularProgress from '@mui/material/CircularProgress'
@@ -89,7 +93,9 @@ function App() {
   }
 
   return (
-    <Routes>
+    <>
+      <NotificationHandler />
+      <Routes>
       {/* Auth routes (только для неавторизованных) */}
       <Route path="/welcome" element={<GuestRoute><WelcomePage /></GuestRoute>} />
       <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
@@ -101,6 +107,7 @@ function App() {
         <Route index element={<SchedulePage />} />
         <Route path="my-enrollments" element={<MyEnrollmentsPage />} />
         <Route path="profile" element={<ProfilePage />} />
+        <Route path="notifications" element={<NotificationSettingsPage />} />
 
         {/* Admin routes — внутри MainPage чтобы была навигация */}
         <Route
@@ -157,6 +164,7 @@ function App() {
       {/* Catch all */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   )
 }
 

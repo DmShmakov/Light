@@ -15,6 +15,72 @@ export type UserRole = 'client' | 'admin'
 export interface UserPreferences {
   favoriteTypes?: string[]
   notificationsEnabled?: boolean
+  notificationTypes?: NotificationTypePreferences
+}
+
+export interface NotificationTypePreferences {
+  enrollment_confirmed?: boolean
+  class_reminder?: boolean
+  class_changed?: boolean
+  class_cancelled?: boolean
+  waitlist_opening?: boolean
+  admin_notifications?: boolean
+}
+
+// Notification types
+export type NotificationType =
+  | 'enrollment_confirmed'
+  | 'class_reminder'
+  | 'class_changed'
+  | 'class_cancelled'
+  | 'waitlist_opening'
+  | 'admin_notifications'
+
+export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
+  enrollment_confirmed: 'Подтверждение записи',
+  class_reminder: 'Напоминание о занятии',
+  class_changed: 'Изменение расписания',
+  class_cancelled: 'Отмена занятия',
+  waitlist_opening: 'Освобождение места',
+  admin_notifications: 'Административные',
+}
+
+export const DEFAULT_NOTIFICATION_TYPES: NotificationTypePreferences = {
+  enrollment_confirmed: true,
+  class_reminder: true,
+  class_changed: true,
+  class_cancelled: true,
+  waitlist_opening: true,
+  admin_notifications: true,
+}
+
+// FCM Token
+export interface FCMDocument {
+  tokenId?: string
+  userId: string
+  fcmToken: string
+  platform: 'web' | 'android' | 'ios'
+  createdAt: Date
+  lastUsedAt: Date
+  isActive: boolean
+}
+
+// Notification payload (from push)
+export interface NotificationPayload {
+  title: string
+  body: string
+  data?: {
+    type: NotificationType
+    classId?: string
+    enrollmentId?: string
+    [key: string]: unknown
+  }
+  icon?: string
+  tag?: string
+  badge?: string
+  actions?: Array<{ action: string; title: string }>
+  requireInteraction?: boolean
+  silent?: boolean
 }
 
 // Class types
@@ -64,6 +130,8 @@ export interface AppSettings {
   cancellationDeadlineMinutes: number
   maxMessagesPerDay: number
   messageSpamIntervalMinutes: number
+  reminderHoursBefore?: number
+  notificationsEnabled?: boolean
 }
 
 // Class with enrollment status

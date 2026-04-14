@@ -36,6 +36,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // Don't precache the messaging SW — it's a separate worker
+        globIgnores: ['firebase-messaging-sw.js'],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/firebaseapis\.com\/.*/i,
