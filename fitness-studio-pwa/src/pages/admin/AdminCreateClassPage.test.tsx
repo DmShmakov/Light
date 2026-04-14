@@ -1,10 +1,13 @@
-import { describe, test, expect } from 'vitest'
+import { describe, test, expect, vi } from 'vitest'
 
 describe('AdminCreateClassPage — логика автозаполнения endDateTime', () => {
-  test('endDateTime = startDateTime + 1 час (через timestamp)', () => {
-    // Логика из AdminCreateClassPage:
-    // new Date(startDateTimeValue.getTime() + 60 * 60 * 1000)
+  // Логика из handleStartDateTimeChange:
+  // if (date && !endDateTimeSet.current) {
+  //   const endDate = new Date(date.getTime() + 60 * 60 * 1000)
+  //   setValue('endDateTime', endDate, { shouldValidate: true })
+  // }
 
+  test('endDateTime = startDateTime + 1 час (через timestamp)', () => {
     const startDateTime = new Date('2026-04-20T10:00:00')
     const endDate = new Date(startDateTime.getTime() + 60 * 60 * 1000)
 
@@ -27,5 +30,32 @@ describe('AdminCreateClassPage — логика автозаполнения end
 
       expect(endDate.toISOString()).toBe(new Date(expected).toISOString())
     }
+  })
+
+  test('null date — endDateTime не устанавливается', () => {
+    const mockSetValue = vi.fn()
+    const endDateTimeSet = { current: false }
+
+    // Имитируем handleStartDateTimeChange(null)
+    const date: Date | null = null as Date | null
+    if (date && !endDateTimeSet.current) {
+      const endDate = new Date(date.getTime() + 60 * 60 * 1000)
+      mockSetValue('endDateTime', endDate)
+    }
+
+    expect(mockSetValue).not.toHaveBeenCalled()
+  })
+
+  test('ручная установка endDateTime блокирует автозаполнение', () => {
+    const mockSetValue = vi.fn()
+    const endDateTimeSet = { current: true } // уже установлена
+
+    const date: Date | null = new Date('2026-04-20T10:00:00') as Date | null
+    if (date && !endDateTimeSet.current) {
+      const endDate = new Date(date.getTime() + 60 * 60 * 1000)
+      mockSetValue('endDateTime', endDate)
+    }
+
+    expect(mockSetValue).not.toHaveBeenCalled()
   })
 })

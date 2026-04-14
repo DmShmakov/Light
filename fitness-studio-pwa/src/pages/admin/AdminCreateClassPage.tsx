@@ -133,23 +133,15 @@ export default function AdminCreateClassPage() {
   }, [isEditMode, classId, setValue])
 
   // Автозаполнение endDateTime = startDateTime + 1 час
-  // Только если endDateTime ещё не была установлена (новый режим или пользователь не менял)
-  const startDateTimeValue = watch('startDateTime')
-  useEffect(() => {
-    if (endDateTimeSet.current) return // уже установлена — не трогаем
-
-    if (startDateTimeValue) {
-      const endDate = new Date(startDateTimeValue.getTime() + 60 * 60 * 1000)
-
-      const currentEnd = watch('endDateTime')
-      if (!currentEnd) {
-        setValue('endDateTime', endDate, { shouldValidate: true })
-      }
+  // Вызывается прямо в onChange DateTimePicker, где доступно точное значение
+  const handleStartDateTimeChange = (date: Date | null) => {
+    if (date && !endDateTimeSet.current) {
+      const endDate = new Date(date.getTime() + 60 * 60 * 1000)
+      setValue('endDateTime', endDate, { shouldValidate: true })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startDateTimeValue])
+  }
 
-  // Пометить, что endDateTime была загружена из базы или установлена
+  // Пометить, что endDateTime была загружена из базы или установлена вручную
   const endDateTimeWatch = watch('endDateTime')
   useEffect(() => {
     if (endDateTimeWatch) {
@@ -162,11 +154,6 @@ export default function AdminCreateClassPage() {
     setError(null)
 
     try {
-      console.log('=== Создание занятия ===')
-      console.log('User:', user)
-      console.log('UID:', user?.uid)
-      console.log('Roles:', user?.roles)
-      
       const classData: Omit<FitnessClass, 'classId' | 'createdAt'> = {
         title: data.title,
         type: data.type,
@@ -207,11 +194,8 @@ export default function AdminCreateClassPage() {
           // Следующая неделя
           currentDate = addWeeks(currentDate, 1)
         }
-
-        console.log(`Создано ${createdCount} еженедельных занятий`)
       } else {
-        const newId = await createClass(classData)
-        console.log('Создано занятие с ID:', newId)
+        await createClass(classData)
       }
 
       navigate('/admin/schedule')
@@ -299,7 +283,10 @@ export default function AdminCreateClassPage() {
               <DateTimePicker
                 label="Дата и время начала"
                 value={field.value}
-                onChange={(date) => field.onChange(date)}
+                onChange={(date) => {
+                  field.onChange(date)
+                  handleStartDateTimeChange(date)
+                }}
                 slotProps={{
                   textField: {
                     fullWidth: true,
