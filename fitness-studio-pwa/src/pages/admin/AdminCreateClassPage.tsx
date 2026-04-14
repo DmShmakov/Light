@@ -282,7 +282,7 @@ export default function AdminCreateClassPage() {
             render={({ field }) => (
               <DateTimePicker
                 label="Дата и время начала"
-                value={field.value}
+                value={field.value ?? null}
                 onChange={(date) => {
                   field.onChange(date)
                   handleStartDateTimeChange(date)
@@ -304,7 +304,7 @@ export default function AdminCreateClassPage() {
             render={({ field }) => (
               <DateTimePicker
                 label="Дата и время окончания"
-                value={field.value}
+                value={field.value ?? null}
                 onChange={(date) => field.onChange(date)}
                 minDate={watch('startDateTime')}
                 slotProps={{
