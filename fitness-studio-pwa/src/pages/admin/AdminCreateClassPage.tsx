@@ -139,8 +139,7 @@ export default function AdminCreateClassPage() {
     if (endDateTimeSet.current) return // уже установлена — не трогаем
 
     if (startDateTimeValue) {
-      const endDate = new Date(startDateTimeValue)
-      endDate.setHours(endDate.getHours() + 1)
+      const endDate = new Date(startDateTimeValue.getTime() + 60 * 60 * 1000)
 
       const currentEnd = watch('endDateTime')
       if (!currentEnd) {
