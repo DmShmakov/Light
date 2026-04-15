@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { doc, updateDoc } from 'firebase/firestore'
+import { doc, updateDoc, getDoc } from 'firebase/firestore'
 import { db } from '../services/firebase'
+import { useAuthStore } from '../store/authStore'
 import {
   initializeFCM,
   revokeAllFCMTokens,
@@ -29,6 +30,23 @@ interface UseNotificationsReturn {
 }
 
 /**
+ * Перезагружает пользователя из Firestore и обновляет Zustand store
+ */
+async function refreshUserStore(user: User): Promise<User | null> {
+  try {
+    const userDoc = await getDoc(doc(db, 'users', user.uid))
+    if (userDoc.exists()) {
+      const data = userDoc.data() as User
+      useAuthStore.getState().setUser(data)
+      return data
+    }
+  } catch (error) {
+    console.error('[useNotifications] Error refreshing user:', error)
+  }
+  return null
+}
+
+/**
  * Хук для управления уведомлениями
  */
 export function useNotifications(user: User | null): UseNotificationsReturn {
@@ -40,10 +58,9 @@ export function useNotifications(user: User | null): UseNotificationsReturn {
   )
   const [foregroundMessage, setForegroundMessage] = useState<NotificationPayload | null>(null)
 
-  const isEnabled =
-    user?.preferences?.notificationsEnabled ?? true
+  const isEnabled = user?.preferences?.notificationsEnabled ?? false
 
-  // Обновляем типы при изменении пользователя
+  // Обновляем локальное состояние при изменении пользователя из store
   useEffect(() => {
     if (user?.preferences?.notificationTypes) {
       setNotificationTypes({
@@ -61,7 +78,6 @@ export function useNotifications(user: User | null): UseNotificationsReturn {
       const data = payload.notification as NotificationPayload | undefined
       if (data) {
         setForegroundMessage(data)
-        // Автоочистка через 5 сек
         setTimeout(() => setForegroundMessage(null), 5000)
       }
     })
@@ -70,7 +86,7 @@ export function useNotifications(user: User | null): UseNotificationsReturn {
   }, [isEnabled, isSupported])
 
   /**
-   * Инициализация: запрос разрешения → получение токена
+   * Инициализация: запрос разрешения → получение токена → сохранение
    */
   const initialize = useCallback(async (): Promise<boolean> => {
     if (!user || !isSupported) return false
@@ -82,11 +98,14 @@ export function useNotifications(user: User | null): UseNotificationsReturn {
       if (success) {
         setPermission('granted')
 
-        // Включаем уведомления в preferences
+        // Обновляем preferences в Firestore
         await updateDoc(doc(db, 'users', user.uid), {
           'preferences.notificationsEnabled': true,
           'preferences.notificationTypes': notificationTypes,
         })
+
+        // Обновляем Zustand store для реактивности UI
+        await refreshUserStore(user)
       }
 
       return success
@@ -106,7 +125,7 @@ export function useNotifications(user: User | null): UseNotificationsReturn {
 
     setIsLoading(true)
     try {
-      const currentlyEnabled = user.preferences?.notificationsEnabled ?? true
+      const currentlyEnabled = user.preferences?.notificationsEnabled ?? false
 
       if (currentlyEnabled) {
         // Выключаем
@@ -124,6 +143,9 @@ export function useNotifications(user: User | null): UseNotificationsReturn {
           })
         }
       }
+
+      // Обновляем Zustand store
+      await refreshUserStore(user)
     } catch (error) {
       console.error('[useNotifications] Toggle error:', error)
     } finally {
@@ -149,9 +171,10 @@ export function useNotifications(user: User | null): UseNotificationsReturn {
         await updateDoc(doc(db, 'users', user.uid), {
           'preferences.notificationTypes': updated,
         })
+        // Обновляем Zustand store
+        await refreshUserStore(user)
       } catch (error) {
         console.error('[useNotifications] Update type error:', error)
-        // Откат при ошибке
         setNotificationTypes(notificationTypes)
       }
     },

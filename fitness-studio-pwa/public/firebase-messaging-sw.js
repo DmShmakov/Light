@@ -11,12 +11,12 @@ importScripts('https://www.gstatic.com/firebasejs/10.14.0/firebase-messaging-com
 // Project settings → Your apps → Config
 // ============================================================
 const firebaseConfig = {
-  apiKey: '',
-  authDomain: '',
-  projectId: '',
-  storageBucket: '',
-  messagingSenderId: '',
-  appId: '',
+  apiKey: 'AIzaSyBLaDhjwf31xPQhgQeBu_vGPPo-rY4vYhk',
+  authDomain: 'light-studio-d0699.firebaseapp.com',
+  projectId: 'light-studio-d0699',
+  storageBucket: 'light-studio-d0699.firebasestorage.app',
+  messagingSenderId: '613792127203',
+  appId: '1:613792127203:web:0f30a22f3a4a230cb78dd6',
 }
 
 // Инициализация Firebase в Service Worker

@@ -1,4 +1,5 @@
 import { getMessaging, getToken, onMessage, deleteToken } from 'firebase/messaging'
+import { getAuth } from 'firebase/auth'
 import {
   collection,
   addDoc,
@@ -61,6 +62,13 @@ export async function saveFCMToken(
   platform: 'web' | 'android' | 'ios' = 'web'
 ): Promise<string | null> {
   try {
+    // Проверяем текущее auth состояние
+    const auth = getAuth()
+    const currentUser = auth.currentUser
+    console.log('[Notifications] saveFCMToken userId:', userId)
+    console.log('[Notifications] Firebase Auth currentUser:', currentUser?.uid || 'null')
+    console.log('[Notifications] IDs match:', userId === currentUser?.uid)
+
     const tokensRef = collection(db, 'fcm_tokens')
 
     // Проверяем, есть ли уже такой токен
@@ -68,8 +76,8 @@ export async function saveFCMToken(
     const existingSnapshot = await getDocs(existingQuery)
 
     if (!existingSnapshot.empty) {
-      // Обновляем существующий
       const existingDoc = existingSnapshot.docs[0]
+      console.log('[Notifications] Token already exists, updating:', existingDoc.id)
       await updateDoc(doc(db, 'fcm_tokens', existingDoc.id), {
         lastUsedAt: serverTimestamp(),
         isActive: true,
@@ -77,20 +85,23 @@ export async function saveFCMToken(
       return existingDoc.id
     }
 
-    // Создаём новый
-    const docRef = await addDoc(tokensRef, {
+    const payload = {
       userId,
       fcmToken,
       platform,
       createdAt: serverTimestamp(),
       lastUsedAt: serverTimestamp(),
       isActive: true,
-    })
+    }
 
-    console.log('[Notifications] FCM token saved:', docRef.id)
+    console.log('[Notifications] Writing payload:', payload)
+
+    const docRef = await addDoc(tokensRef, payload)
+    console.log('[Notifications] FCM token saved with ID:', docRef.id)
     return docRef.id
   } catch (error) {
     console.error('[Notifications] Error saving FCM token:', error)
+    console.error('[Notifications] Error details:', (error as Error).message)
     return null
   }
 }
