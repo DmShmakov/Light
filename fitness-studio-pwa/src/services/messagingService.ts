@@ -1,5 +1,4 @@
 import { getMessaging, getToken, onMessage, deleteToken } from 'firebase/messaging'
-import { getAuth } from 'firebase/auth'
 import {
   collection,
   addDoc,
@@ -62,13 +61,6 @@ export async function saveFCMToken(
   platform: 'web' | 'android' | 'ios' = 'web'
 ): Promise<string | null> {
   try {
-    // Проверяем текущее auth состояние
-    const auth = getAuth()
-    const currentUser = auth.currentUser
-    console.log('[Notifications] saveFCMToken userId:', userId)
-    console.log('[Notifications] Firebase Auth currentUser:', currentUser?.uid || 'null')
-    console.log('[Notifications] IDs match:', userId === currentUser?.uid)
-
     const tokensRef = collection(db, 'fcm_tokens')
 
     // Проверяем, есть ли уже такой токен

@@ -11,7 +11,6 @@ import Divider from '@mui/material/Divider'
 import Avatar from '@mui/material/Avatar'
 import AvatarGroup from '@mui/material/AvatarGroup'
 import Alert from '@mui/material/Alert'
-import Snackbar from '@mui/material/Snackbar'
 import IconButton from '@mui/material/IconButton'
 import ShareIcon from '@mui/icons-material/Share'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
@@ -20,6 +19,7 @@ import { ru } from 'date-fns/locale'
 import { getClassById, enrollInClass, cancelEnrollment, getEnrollmentsForClass, getUserEnrollments } from '../services/firestoreService'
 import { useAuthStore } from '../store/authStore'
 import { useScheduleStore } from '../store/scheduleStore'
+import { notify } from '../components/NotificationSnackbar'
 import { FitnessClass, Enrollment } from '../types'
 
 const levelLabels: Record<string, string> = {
@@ -41,11 +41,6 @@ export default function ClassDetailsPage() {
   const [actionLoading, setActionLoading] = useState(false)
   const [isEnrolled, setIsEnrolled] = useState(false)
   const [enrollmentId, setEnrollmentId] = useState<string | null>(null)
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' }>({
-    open: false,
-    message: '',
-    severity: 'success',
-  })
 
   // Загрузка данных занятия
   useEffect(() => {
@@ -117,18 +112,19 @@ export default function ClassDetailsPage() {
         waitlistPosition: null,
       }
       setEnrollments((prev) => [...prev, fakeEnrollment])
-      
-      setSnackbar({
-        open: true,
-        message: 'Вы успешно записаны на занятие!',
+
+      // Уведомление через глобальный Snackbar
+      notify({
+        message: `Вы записаны на «${fitnessClass.title}»!`,
         severity: 'success',
+        duration: 4000,
       })
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Ошибка записи. Попробуйте ещё раз.'
-      setSnackbar({
-        open: true,
+      notify({
         message,
         severity: 'error',
+        duration: 4000,
       })
     } finally {
       setActionLoading(false)
@@ -143,24 +139,25 @@ export default function ClassDetailsPage() {
     try {
       await cancelEnrollment(enrollmentId)
       setIsEnrolled(false)
-      
+
       // Обновляем счётчик на клиенте
       useScheduleStore.getState().decrementEnrollment(classId!)
-      
+
       // Обновляем список записей локально
       setEnrollments((prev) => prev.filter((e) => e.enrollmentId !== enrollmentId))
-      
-      setSnackbar({
-        open: true,
+
+      // Уведомление
+      notify({
         message: 'Запись отменена.',
         severity: 'info',
+        duration: 3000,
       })
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Ошибка отмены. Попробуйте ещё раз.'
-      setSnackbar({
-        open: true,
+      notify({
         message,
         severity: 'error',
+        duration: 4000,
       })
     } finally {
       setActionLoading(false)
@@ -185,17 +182,9 @@ export default function ClassDetailsPage() {
       // Fallback: копирование в буфер обмена
       try {
         await navigator.clipboard.writeText(shareUrl)
-        setSnackbar({
-          open: true,
-          message: 'Ссылка скопирована в буфер обмена',
-          severity: 'success',
-        })
+        notify({ message: 'Ссылка скопирована в буфер обмена', severity: 'success', duration: 3000 })
       } catch {
-        setSnackbar({
-          open: true,
-          message: 'Не удалось скопировать ссылку',
-          severity: 'error',
-        })
+        notify({ message: 'Не удалось скопировать ссылку', severity: 'error', duration: 3000 })
       }
     }
   }
@@ -331,17 +320,6 @@ export default function ClassDetailsPage() {
           </>
         )}
       </Box>
-
-      {/* Уведомления */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
-        <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Container>
   )
 }
