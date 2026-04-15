@@ -15,7 +15,12 @@
       "Bash(netstat *)",
       "Bash(findstr *)",
       "Bash(taskkill *)",
-      "Bash(type *)"
+      "Bash(type *)",
+      "Bash(gh *)",
+      "Bash(curl *)",
+      "Bash(powershell *)",
+      "Bash(python *)",
+      "Bash(true)"
     ]
   },
   "$version": 3
