@@ -1,40 +1,51 @@
-import { initializeApp } from 'firebase/app'
-import { getMessaging } from 'firebase/messaging/sw'
+/* eslint-env serviceworker */
 
-// TODO: Replace with actual Firebase config (same as main app)
+// ============================================================
+// Firebase SDK через CDN (compat build для Service Worker)
+// ============================================================
+importScripts('https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js')
+importScripts('https://www.gstatic.com/firebasejs/10.14.0/firebase-messaging-compat.js')
+
+// ============================================================
+// TODO: Вставь сюда свою Firebase конфигурацию из Firebase Console
+// Project settings → Your apps → Config
+// ============================================================
 const firebaseConfig = {
-  apiKey: 'YOUR_API_KEY',
-  authDomain: 'YOUR_PROJECT.firebaseapp.com',
-  projectId: 'YOUR_PROJECT_ID',
-  storageBucket: 'YOUR_PROJECT.appspot.com',
-  messagingSenderId: 'YOUR_SENDER_ID',
-  appId: 'YOUR_APP_ID',
+  apiKey: '',
+  authDomain: '',
+  projectId: '',
+  storageBucket: '',
+  messagingSenderId: '',
+  appId: '',
 }
 
-// Initialize Firebase in Service Worker
-const app = initializeApp(firebaseConfig)
-const messaging = getMessaging(app)
+// Инициализация Firebase в Service Worker
+const messaging = firebaseConfig.apiKey
+  ? (firebase.initializeApp(firebaseConfig), firebase.messaging())
+  : null
 
+// ============================================================
 // Handle push notifications
-self.addEventListener('push', (event: PushEvent) => {
+// ============================================================
+self.addEventListener('push', (event) => {
   if (!event.data) return
 
-  let payload: { title?: string; body?: string; data?: Record<string, unknown> }
+  let payload
   try {
     payload = event.data.json()
   } catch {
-    payload = { title: 'Новое уведомление', body: event.data.text() }
+    payload = { title: 'Фитнес Студия', body: event.data.text() }
   }
 
   const title = payload.title || 'Фитнес Студия'
   const body = payload.body || ''
   const data = payload.data || {}
 
-  const options: NotificationOptions = {
+  const options = {
     body,
     icon: '/pwa-192x192.png',
     badge: '/pwa-192x192.png',
-    tag: (data.classId as string) || 'default',
+    tag: data.classId || 'default',
     requireInteraction: data.type === 'class_cancelled' || data.type === 'class_changed',
     data: {
       url: data.classId ? `/class/${data.classId}` : '/',
@@ -42,36 +53,35 @@ self.addEventListener('push', (event: PushEvent) => {
     },
     actions: [
       { action: 'view', title: 'Посмотреть' },
-      data.type === 'class_cancelled' ? { action: 'dismiss', title: 'Закрыть' } : null,
-    ].filter(Boolean) as NotificationAction[],
+    ],
+  }
+
+  if (data.type === 'class_cancelled') {
+    options.actions.push({ action: 'dismiss', title: 'Закрыть' })
   }
 
   event.waitUntil(self.registration.showNotification(title, options))
 })
 
+// ============================================================
 // Handle notification click
-self.addEventListener('notificationclick', (event: ExtendableNotificationEvent) => {
+// ============================================================
+self.addEventListener('notificationclick', (event) => {
   event.notification.close()
 
   const urlToOpen = event.notification.data?.url || '/'
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      // Check if there's already a window open
       for (const client of windowClients) {
         if (client.url.includes(urlToOpen) && 'focus' in client) {
           return client.focus()
         }
       }
-
-      // No window open, open a new one
       if ('openWindow' in clients) {
-        return (clients as unknown as { openWindow: (url: string) => Promise<Client> }).openWindow(urlToOpen)
+        return clients.openWindow(urlToOpen)
       }
-
       return undefined
     })
   )
 })
-
-export {}
