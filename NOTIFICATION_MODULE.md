@@ -1,8 +1,8 @@
 # Техническая документация: Модуль уведомлений (Notification Module)
 
-**Версия:** 1.0  
-**Дата:** 14 апреля 2026 г.  
-**Статус:** Черновик
+**Версия:** 1.1
+**Дата:** 15 апреля 2026 г.
+**Статус:** В разработке (клиентская часть готова, Cloud Functions — в работе)
 
 ---
 
@@ -59,27 +59,33 @@
 
 ## 2. Текущее состояние реализации
 
-### 2.1. Реализовано (Фаза 1)
+### 2.1. Реализовано (клиентская часть — готово ✅)
 
 | Компонент | Статус | Расположение |
 |-----------|--------|-------------|
-| `notificationsEnabled` в `UserPreferences` | ✅ | `src/types/index.ts` |
-| `getMessagingService()` helper | ✅ | `src/services/firebase.ts:24-31` |
-| UI-элемент в профиле (статус вкл/выкл) | ⚠️ | `src/pages/ProfilePage.tsx:103-107` (косметический) |
-| Значение по умолчанию `true` при регистрации | ✅ | `src/services/authService.ts:36,64` |
-| `VITE_FIREBASE_MESSAGING_SENDER_ID` | ✅ | `.env.example`, `src/vite-env.d.ts` |
+| `messagingService.ts` | ✅ | `src/services/messagingService.ts` |
+| `useNotifications.ts` | ✅ | `src/hooks/useNotifications.ts` |
+| `NotificationSnackbar.tsx` | ✅ | `src/components/NotificationSnackbar.tsx` |
+| `firebase-messaging-sw.js` | ✅ | `public/firebase-messaging-sw.js` |
+| `NotificationSettingsPage.tsx` | ✅ | `src/pages/NotificationSettingsPage.tsx` |
+| Роут `/notifications` | ✅ | `src/App.tsx` |
+| Ссылка из профиля | ✅ | `src/pages/ProfilePage.tsx` |
+| `notify()` в ClassDetailsPage | ✅ | Запись, отмена, копирование ссылки |
+| `NotificationType` типы | ✅ | `src/types/index.ts` |
+| `FCMDocument` интерфейс | ✅ | `src/types/index.ts` |
+| Security Rules для `fcm_tokens` | ✅ | `firestore.rules` |
+| `VITE_FIREBASE_VAPID_KEY` | ✅ | `.env.example` |
+| E2E тесты уведомлений | ✅ | 4 теста, все проходят |
 
-### 2.2. Не реализовано (Фаза 2)
+### 2.2. Не реализовано (Cloud Functions — в работе)
 
-| Компонент | Описание |
-|-----------|----------|
-| Запрос разрешения на уведомления | `Notification.requestPermission()` + `getToken()` |
-| Сохранение FCM-токена в Firestore | Коллекция `fcm_tokens` |
-| Обработка push-сообщений | Service worker с `push` и `notificationclick` |
-| Внутриприкладные уведомления | Snackbar/Toast компоненты для UI |
-| Cloud Functions | Триггеры для отправки уведомлений |
-| Scheduled функция | Напоминания за 2 часа до занятия |
-| Настройка уведомлений в профиле | Включение/выключение, выбор типов |
+| Компонент | Описание | Issue |
+|-----------|----------|-------|
+| Cloud Functions триггеры | onWrite(enrollments), onWrite(classes) | #18 |
+| Scheduled reminders | Cron каждые 15 мин, напоминания за 2ч | #20 |
+| notificationService | Общая логика отправки через FCM | #18 |
+| tokenService | Очистка неактивных токенов | #18 |
+| E2E тесты push-уведомлений | Интеграционные тесты | #22 |
 
 ---
 
@@ -87,14 +93,14 @@
 
 ### 3.1. Матрица уведомлений
 
-| # | Тип | Триггер | Получатели | Канал | Приоритет |
-|---|-----|---------|-----------|-------|-----------|
-| 1 | **Подтверждение записи** | Создание записи в `enrollments` | Записавшийся пользователь | Push + UI Snackbar | Средний |
-| 2 | **Напоминание о занятии** | Cron: за 2 часа до `startDateTime` | Все записанные участники | Push | Высокий |
-| 3 | **Изменение расписания** | Обновление документа в `classes` | Все записанные участники | Push | Высокий |
-| 4 | **Отмена занятия** | `classes.status` → `cancelled` | Все записанные участники | Push | Критический |
-| 5 | **Освобождение места** | Отмена записи (`enrollments.status` → `cancelled`) | Пользователи в листе ожидания | Push | Средний |
-| 6 | **Административные** | Новые записи, удаления | Администраторы | Push | Низкий |
+| # | Тип | Триггер | Получатели | Канал | Приоритет | Статус |
+|---|-----|---------|-----------|-------|-----------|--------|
+| 1 | **Подтверждение записи** | Создание записи в `enrollments` | Записавшийся пользователь | ~~Push~~ + ✅ UI Snackbar | Средний | 🟡 Частично |
+| 2 | **Напоминание о занятии** | Cron: за 2 часа до `startDateTime` | Все записанные участники | Push | Высокий | ❌ Не реализовано |
+| 3 | **Изменение расписания** | Обновление документа в `classes` | Все записанные участники | Push | Высокий | ❌ Не реализовано |
+| 4 | **Отмена занятия** | `classes.status` → `cancelled` | Все записанные участники | ~~Push~~ + ✅ UI Snackbar | Критический | 🟡 Частично |
+| 5 | **Освобождение места** | Отмена записи (`enrollments.status` → `cancelled`) | Пользователи в листе ожидания | Push | Средний | ❌ Не реализовано |
+| 6 | **Административные** | Новые записи, удаления | Администраторы | Push | Низкий | ❌ Не реализовано |
 
 ### 3.2. Шаблоны уведомлений
 
