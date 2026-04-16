@@ -130,8 +130,9 @@ test.describe('Snackbar уведомления при записи/отмене'
   })
 
   test('Service Worker зарегистрирован в браузере', async ({ page }) => {
-    // SW регистрируется только в production build — пропускаем в dev-режиме
-    test.skip(!process.env.CI, 'SW не активен в dev-режиме (только в production build)')
+    // SW регистрируется только в production build.
+    // Локально (dev-сервер) — пропускаем, в CI запускаем против vite preview.
+    test.skip(!process.env.CI, 'SW не активен в dev-режиме — запускать только в CI (vite preview)')
 
     await loginAsAdmin(page)
 
