@@ -130,12 +130,14 @@ test.describe('Snackbar уведомления при записи/отмене'
   })
 
   test('Service Worker зарегистрирован в браузере', async ({ page }) => {
+    // SW регистрируется только в production build — пропускаем в dev-режиме
+    test.skip(!process.env.CI, 'SW не активен в dev-режиме (только в production build)')
+
     await loginAsAdmin(page)
 
     await page.goto('/')
     await page.waitForTimeout(3000)
 
-    // Проверяем регистрацию Service Worker через JS
     const swRegistered = await page.evaluate(async () => {
       if (!('serviceWorker' in navigator)) return false
       const registrations = await navigator.serviceWorker.getRegistrations()
