@@ -39,19 +39,21 @@ export default function AdminDashboardPage() {
         Админ-панель
       </Typography>
 
-      <Grid container spacing={2} sx={{ mt: 2 }}>
+      <Grid container direction="column" spacing={2} sx={{ mt: 2 }}>
         {menuItems.map((item) => (
-          <Grid item xs={12} sm={6} key={item.path}>
+          <Grid item xs={12} key={item.path}>
             <Card>
               <CardActionArea onClick={() => navigate(item.path)}>
-                <CardContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, py: 4 }}>
+                <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 2 }}>
                   {item.icon}
-                  <Typography variant="h6" align="center">
-                    {item.title}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" align="center">
-                    {item.description}
-                  </Typography>
+                  <div>
+                    <Typography variant="h6">
+                      {item.title}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {item.description}
+                    </Typography>
+                  </div>
                 </CardContent>
               </CardActionArea>
             </Card>
