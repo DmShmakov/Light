@@ -34,6 +34,12 @@ const levelLabels: Record<string, string> = {
   advanced:     'Продвинутый',
 }
 
+const levelColors: Record<string, 'success' | 'error' | 'primary'> = {
+  beginner:     'success',
+  intermediate: 'error',
+  advanced:     'primary',
+}
+
 const timeLabels: Record<string, string> = {
   morning:   'Утро 6–12',
   afternoon: 'День 12–17',
@@ -116,7 +122,7 @@ export default function ScheduleFilters({ filters, onChange, availableTypes }: P
                   label={label}
                   size="small"
                   clickable
-                  color={filters.level === val ? 'primary' : 'default'}
+                  color={levelColors[val] ?? 'default'}
                   variant={filters.level === val ? 'filled' : 'outlined'}
                   onClick={() => set({ level: filters.level === val ? '' : val })}
                 />

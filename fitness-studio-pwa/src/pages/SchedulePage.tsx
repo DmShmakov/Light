@@ -25,19 +25,17 @@ import { getClassesByWeek, getEnrollmentCounts, getUserEnrollmentsByDateRange } 
 import { FitnessClass } from '../types'
 import { ScheduleFilterState, EMPTY_FILTERS, applyFilters } from '../utils/scheduleFilters'
 
-// Маппинг типов занятий на цвета
-const classTypeColors: Record<string, 'default' | 'primary' | 'secondary'> = {
-  yoga: 'primary',
-  pilates: 'secondary',
-  crossfit: 'primary',
-  default: 'default',
-}
-
 // Маппинг уровней
 const levelLabels: Record<string, string> = {
   beginner: 'Начальный',
   intermediate: 'Средний',
   advanced: 'Продвинутый',
+}
+
+const levelColors: Record<string, 'success' | 'error' | 'primary'> = {
+  beginner: 'success',
+  intermediate: 'error',
+  advanced: 'primary',
 }
 
 interface DayGroup {
@@ -204,7 +202,7 @@ export default function SchedulePage() {
                       <Chip
                         label={levelLabels[cls.level]}
                         size="small"
-                        color={classTypeColors[cls.type] || 'default'}
+                        color={levelColors[cls.level] || 'default'}
                         variant="outlined"
                         sx={{ ml: 1, flexShrink: 0 }}
                       />
