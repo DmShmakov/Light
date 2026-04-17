@@ -57,21 +57,19 @@ export default function ScheduleFilters({ filters, onChange, availableTypes }: P
           placeholder="Поиск по названию или тренеру"
           value={filters.search}
           onChange={(e) => set({ search: e.target.value })}
-          slotProps={{
-            input: {
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon fontSize="small" />
-                </InputAdornment>
-              ),
-              endAdornment: filters.search ? (
-                <InputAdornment position="end">
-                  <IconButton size="small" onClick={() => set({ search: '' })}>
-                    <ClearIcon fontSize="small" />
-                  </IconButton>
-                </InputAdornment>
-              ) : null,
-            },
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+            endAdornment: filters.search ? (
+              <InputAdornment position="end">
+                <IconButton size="small" onClick={() => set({ search: '' })}>
+                  <ClearIcon fontSize="small" />
+                </IconButton>
+              </InputAdornment>
+            ) : null,
           }}
         />
         <IconButton
