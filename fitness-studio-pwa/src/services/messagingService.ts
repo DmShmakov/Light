@@ -35,8 +35,13 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 export async function getFCMToken(): Promise<string | null> {
   try {
     const messaging = getMessaging()
+
+    // Ждём пока SW станет активным — без этого PushManager.subscribe() падает
+    const serviceWorkerRegistration = await navigator.serviceWorker.ready
+
     const token = await getToken(messaging, {
       vapidKey: VAPID_KEY,
+      serviceWorkerRegistration,
     })
 
     if (token) {
