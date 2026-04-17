@@ -71,10 +71,6 @@ export default function MyEnrollmentsPage() {
 
   return (
     <Container maxWidth="sm" sx={{ py: 2 }}>
-      <Typography variant="h5" component="h1" gutterBottom>
-        Мои записи
-      </Typography>
-
       <WeekNavigator />
 
       {loading ? (

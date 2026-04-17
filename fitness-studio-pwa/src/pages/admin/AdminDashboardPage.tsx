@@ -35,10 +35,6 @@ export default function AdminDashboardPage() {
 
   return (
     <Container maxWidth="sm" sx={{ py: 2 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Админ-панель
-      </Typography>
-
       <Grid container direction="column" spacing={2} sx={{ mt: 2 }}>
         {menuItems.map((item) => (
           <Grid item xs={12} key={item.path}>

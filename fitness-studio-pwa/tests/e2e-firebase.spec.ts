@@ -183,7 +183,7 @@ test.describe('E2E: Полный цикл с Firebase', () => {
     await page.getByRole('button', { name: 'Мои записи' }).click()
     await page.waitForTimeout(1000)
     
-    await expect(page.getByRole('heading', { name: 'Мои записи' })).toBeVisible()
+    await expect(page).toHaveURL(/\/my-enrollments/)
     
     const pageContent = await page.content()
     if (pageContent.includes('У вас пока нет записей')) {
@@ -198,7 +198,7 @@ test.describe('E2E: Полный цикл с Firebase', () => {
     await page.getByRole('button', { name: 'Админ' }).click()
     await page.waitForTimeout(2000)
     
-    await expect(page.getByRole('heading', { name: 'Админ-панель' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Создать занятие' })).toBeVisible()
+    await expect(page).toHaveURL(/\/admin/)
+    await expect(page.getByText('Создать занятие')).toBeVisible()
   })
 })
