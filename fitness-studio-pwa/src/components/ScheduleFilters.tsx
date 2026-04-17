@@ -109,17 +109,18 @@ export default function ScheduleFilters({ filters, onChange, availableTypes }: P
           {/* Уровень */}
           <Box>
             <Typography variant="caption" color="text.secondary">Уровень</Typography>
-            <Box sx={{ mt: 0.5 }}>
-              <ToggleButtonGroup
-                size="small"
-                exclusive
-                value={filters.level}
-                onChange={(_, v) => set({ level: v ?? '' })}
-              >
-                {Object.entries(levelLabels).map(([val, label]) => (
-                  <ToggleButton key={val} value={val}>{label}</ToggleButton>
-                ))}
-              </ToggleButtonGroup>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+              {Object.entries(levelLabels).map(([val, label]) => (
+                <Chip
+                  key={val}
+                  label={label}
+                  size="small"
+                  clickable
+                  color={filters.level === val ? 'primary' : 'default'}
+                  variant={filters.level === val ? 'filled' : 'outlined'}
+                  onClick={() => set({ level: filters.level === val ? '' : val })}
+                />
+              ))}
             </Box>
           </Box>
 
