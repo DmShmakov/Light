@@ -17,6 +17,7 @@ import Visibility from '@mui/icons-material/Visibility'
 import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import GoogleIcon from '@mui/icons-material/Google'
 import { loginWithEmail, loginWithGoogle } from '../services/authService'
+import { REDIRECT_AFTER_LOGIN_KEY } from '../App'
 
 const loginSchema = z.object({
   email: z.string().email('Введите корректный email'),
@@ -39,12 +40,18 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   })
 
+  const getRedirectUrl = () => {
+    const saved = sessionStorage.getItem(REDIRECT_AFTER_LOGIN_KEY)
+    sessionStorage.removeItem(REDIRECT_AFTER_LOGIN_KEY)
+    return saved || '/'
+  }
+
   const onSubmit = async (data: LoginForm) => {
     try {
       setLoading(true)
       setError(null)
       await loginWithEmail(data.email, data.password)
-      navigate('/')
+      navigate(getRedirectUrl())
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Ошибка входа. Проверьте данные.'
       setError(message)
@@ -58,7 +65,7 @@ export default function LoginPage() {
       setLoading(true)
       setError(null)
       await loginWithGoogle()
-      navigate('/')
+      navigate(getRedirectUrl())
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Ошибка входа через Google.'
       setError(message)

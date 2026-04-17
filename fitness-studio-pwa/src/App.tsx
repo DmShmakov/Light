@@ -1,5 +1,8 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
+
+export const REDIRECT_AFTER_LOGIN_KEY = 'redirectAfterLogin'
+const AUTH_ROUTES = ['/welcome', '/login', '/register', '/recovery']
 
 // Auth pages
 import WelcomePage from './pages/WelcomePage'
@@ -58,8 +61,12 @@ function GuestRoute({ children }: { children: React.ReactNode }) {
 // Главная: неавторизованных → welcome, авторизованных → расписание
 function HomeRoute() {
   const { user } = useAuthStore()
+  const location = useLocation()
 
   if (!user) {
+    if (!AUTH_ROUTES.includes(location.pathname)) {
+      sessionStorage.setItem(REDIRECT_AFTER_LOGIN_KEY, location.pathname + location.search)
+    }
     return <Navigate to="/welcome" replace />
   }
 
@@ -69,12 +76,16 @@ function HomeRoute() {
 // Protected route component
 function ProtectedRoute({ children, requireAdmin = false }: { children: React.ReactNode; requireAdmin?: boolean }) {
   const { user, loading, isAdmin } = useAuthStore()
+  const location = useLocation()
 
   if (loading) {
     return <LoadingScreen />
   }
 
   if (!user) {
+    if (!AUTH_ROUTES.includes(location.pathname)) {
+      sessionStorage.setItem(REDIRECT_AFTER_LOGIN_KEY, location.pathname + location.search)
+    }
     return <Navigate to="/login" replace />
   }
 
@@ -159,7 +170,14 @@ function App() {
           }
         />
       </Route>
-      <Route path="/class/:classId" element={<ClassDetailsPage />} />
+      <Route
+        path="/class/:classId"
+        element={
+          <ProtectedRoute>
+            <ClassDetailsPage />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Catch all */}
       <Route path="*" element={<Navigate to="/" replace />} />
