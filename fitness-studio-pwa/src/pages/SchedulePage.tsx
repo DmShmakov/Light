@@ -15,6 +15,7 @@ import Skeleton from '@mui/material/Skeleton'
 import Divider from '@mui/material/Divider'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import WeekNavigator from '../components/WeekNavigator'
+import ScheduleFilters from '../components/ScheduleFilters'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import { format, isToday, isPast, isSameDay } from 'date-fns'
 import { ru } from 'date-fns/locale'
@@ -22,6 +23,7 @@ import { useScheduleStore } from '../store/scheduleStore'
 import { useAuthStore } from '../store/authStore'
 import { getClassesByWeek, getEnrollmentCounts, getUserEnrollmentsByDateRange } from '../services/firestoreService'
 import { FitnessClass } from '../types'
+import { ScheduleFilterState, EMPTY_FILTERS, applyFilters } from '../utils/scheduleFilters'
 
 // Маппинг типов занятий на цвета
 const classTypeColors: Record<string, 'default' | 'primary' | 'secondary'> = {
@@ -49,6 +51,10 @@ export default function SchedulePage() {
   const { user } = useAuthStore()
   const [expandedDay, setExpandedDay] = useState<string | null>(null)
   const [userEnrolledClassIds, setUserEnrolledClassIds] = useState<Set<string>>(new Set())
+  const [filters, setFilters] = useState<ScheduleFilterState>(EMPTY_FILTERS)
+
+  // Уникальные типы занятий текущей недели для чипов фильтра
+  const availableTypes = [...new Set(classes.map((c) => c.type))].sort()
 
   // Загрузка занятий при изменении недели
   useEffect(() => {
@@ -85,6 +91,9 @@ export default function SchedulePage() {
     loadClasses()
   }, [selectedWeekStart, setLoading, user])
 
+  // Применяем фильтры к списку занятий
+  const filteredClasses = applyFilters(classes, filters)
+
   // Группировка занятий по дням
   const dayGroups: DayGroup[] = []
 
@@ -92,7 +101,7 @@ export default function SchedulePage() {
     const date = new Date(selectedWeekStart)
     date.setDate(date.getDate() + i)
 
-    const dayClasses = classes.filter((cls: FitnessClass) => {
+    const dayClasses = filteredClasses.filter((cls: FitnessClass) => {
       const classDate = new Date(cls.startDateTime)
       return isSameDay(classDate, date)
     })
@@ -250,6 +259,8 @@ export default function SchedulePage() {
   return (
     <Container maxWidth="sm" sx={{ py: 2 }}>
       <WeekNavigator />
+
+      <ScheduleFilters filters={filters} onChange={setFilters} availableTypes={availableTypes} />
 
       {/* Список дней недели */}
       {loading ? (
