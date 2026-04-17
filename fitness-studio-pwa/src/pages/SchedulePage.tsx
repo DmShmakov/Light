@@ -14,10 +14,9 @@ import IconButton from '@mui/material/IconButton'
 import Skeleton from '@mui/material/Skeleton'
 import Divider from '@mui/material/Divider'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
-import ChevronRightIcon from '@mui/icons-material/ChevronRight'
+import WeekNavigator from '../components/WeekNavigator'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
-import { format, addDays, isToday, isPast, isSameDay } from 'date-fns'
+import { format, isToday, isPast, isSameDay } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { useScheduleStore } from '../store/scheduleStore'
 import { useAuthStore } from '../store/authStore'
@@ -46,7 +45,7 @@ interface DayGroup {
 
 export default function SchedulePage() {
   const navigate = useNavigate()
-  const { classes, loading, setLoading, selectedWeekStart, setSelectedWeekStart, enrollmentCounts } = useScheduleStore()
+  const { classes, loading, setLoading, selectedWeekStart, enrollmentCounts } = useScheduleStore()
   const { user } = useAuthStore()
   const [expandedDay, setExpandedDay] = useState<string | null>(null)
   const [userEnrolledClassIds, setUserEnrolledClassIds] = useState<Set<string>>(new Set())
@@ -124,20 +123,10 @@ export default function SchedulePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dayGroups, classes])
 
-  // Навигация по неделям
-  const goToPreviousWeek = () => {
-    const prevWeek = new Date(selectedWeekStart)
-    prevWeek.setDate(prevWeek.getDate() - 7)
-    setSelectedWeekStart(prevWeek)
+  // Сброс раскрытого дня при смене недели
+  useEffect(() => {
     setExpandedDay(null)
-  }
-
-  const goToNextWeek = () => {
-    const nextWeek = new Date(selectedWeekStart)
-    nextWeek.setDate(nextWeek.getDate() + 7)
-    setSelectedWeekStart(nextWeek)
-    setExpandedDay(null)
-  }
+  }, [selectedWeekStart])
 
   // Перекрытие дня
   const toggleDay = (dateStr: string) => {
@@ -260,21 +249,7 @@ export default function SchedulePage() {
 
   return (
     <Container maxWidth="sm" sx={{ py: 2 }}>
-      {/* Навигация по неделям */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-        <IconButton onClick={goToPreviousWeek}>
-          <ChevronLeftIcon />
-        </IconButton>
-
-        <Typography variant="h6" align="center">
-          {format(selectedWeekStart, 'd MMMM', { locale: ru })} —{' '}
-          {format(addDays(selectedWeekStart, 6), 'd MMMM yyyy', { locale: ru })}
-        </Typography>
-
-        <IconButton onClick={goToNextWeek}>
-          <ChevronRightIcon />
-        </IconButton>
-      </Box>
+      <WeekNavigator />
 
       {/* Список дней недели */}
       {loading ? (

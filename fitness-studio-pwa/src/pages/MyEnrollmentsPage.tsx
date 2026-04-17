@@ -10,16 +10,19 @@ import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Skeleton from '@mui/material/Skeleton'
 import Alert from '@mui/material/Alert'
-import { format, isFuture, isPast } from 'date-fns'
+import Divider from '@mui/material/Divider'
+import { format, isPast, addDays } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { useAuthStore } from '../store/authStore'
-import { getUserEnrollments } from '../services/firestoreService'
+import { useScheduleStore } from '../store/scheduleStore'
+import { getUserEnrollmentsByDateRange, getClassById } from '../services/firestoreService'
 import { FitnessClass } from '../types'
-import { getClassById } from '../services/firestoreService'
+import WeekNavigator from '../components/WeekNavigator'
 
 export default function MyEnrollmentsPage() {
   const navigate = useNavigate()
   const { user } = useAuthStore()
+  const { selectedWeekStart } = useScheduleStore()
   const [classes, setClasses] = useState<FitnessClass[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -29,18 +32,21 @@ export default function MyEnrollmentsPage() {
 
       setLoading(true)
       try {
-        const userEnrollments = await getUserEnrollments(user.uid)
-        const confirmedEnrollments = userEnrollments.filter((e) => e.status === 'confirmed')
+        const weekEnd = new Date(selectedWeekStart)
+        weekEnd.setDate(weekEnd.getDate() + 6)
+        weekEnd.setHours(23, 59, 59, 999)
 
-        // Загрузка информации о занятиях
+        const enrollments = await getUserEnrollmentsByDateRange(user.uid, selectedWeekStart, weekEnd)
+
         const classesData = await Promise.all(
-          confirmedEnrollments.map(async (enrollment) => {
-            const fitnessClass = await getClassById(enrollment.classId)
-            return fitnessClass
-          })
+          enrollments.map((e) => getClassById(e.classId))
         )
 
-        setClasses(classesData.filter((c) => c !== null) as FitnessClass[])
+        const sorted = (classesData.filter(Boolean) as FitnessClass[]).sort(
+          (a, b) => new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime()
+        )
+
+        setClasses(sorted)
       } catch (error) {
         console.error('Ошибка загрузки записей:', error)
       } finally {
@@ -49,7 +55,7 @@ export default function MyEnrollmentsPage() {
     }
 
     loadEnrollments()
-  }, [user])
+  }, [user, selectedWeekStart])
 
   if (!user) {
     return (
@@ -59,15 +65,17 @@ export default function MyEnrollmentsPage() {
     )
   }
 
-  // Разделение на предстоящие и прошедшие
-  const upcomingClasses = classes.filter((c) => isFuture(new Date(c.startDateTime)))
-  const pastClasses = classes.filter((c) => !isFuture(new Date(c.startDateTime)) || isPast(new Date(c.endDateTime)))
+  const weekEnd = addDays(selectedWeekStart, 6)
+  const upcomingClasses = classes.filter((c) => !isPast(new Date(c.startDateTime)))
+  const pastClasses = classes.filter((c) => isPast(new Date(c.startDateTime)))
 
   return (
     <Container maxWidth="sm" sx={{ py: 2 }}>
       <Typography variant="h5" component="h1" gutterBottom>
         Мои записи
       </Typography>
+
+      <WeekNavigator />
 
       {loading ? (
         Array.from({ length: 3 }).map((_, i) => (
@@ -78,10 +86,12 @@ export default function MyEnrollmentsPage() {
             </CardContent>
           </Card>
         ))
-      ) : upcomingClasses.length === 0 && pastClasses.length === 0 ? (
-        <Box sx={{ textAlign: 'center', py: 8 }}>
+      ) : classes.length === 0 ? (
+        <Box sx={{ textAlign: 'center', py: 6 }}>
           <Typography variant="body1" color="text.secondary" gutterBottom>
-            У вас пока нет записей на занятия
+            Нет записей на{' '}
+            {format(selectedWeekStart, 'd MMM', { locale: ru })} —{' '}
+            {format(weekEnd, 'd MMM yyyy', { locale: ru })}
           </Typography>
           <Button variant="contained" sx={{ mt: 2 }} onClick={() => navigate('/')}>
             Посмотреть расписание
@@ -89,78 +99,81 @@ export default function MyEnrollmentsPage() {
         </Box>
       ) : (
         <>
-          {/* Предстоящие занятия */}
           {upcomingClasses.length > 0 && (
-            <Box sx={{ mb: 4 }}>
-              <Typography variant="h6" gutterBottom>
-                Предстоящие ({upcomingClasses.length})
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                Предстоящие · {upcomingClasses.length}
               </Typography>
-              
-              {upcomingClasses.map((fitnessClass) => (
-                <Card key={fitnessClass.classId} sx={{ mb: 2 }}>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      {fitnessClass.title}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Тренер: {fitnessClass.trainerName}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {format(new Date(fitnessClass.startDateTime), 'd MMMM yyyy, HH:mm', { locale: ru })}
-                    </Typography>
-                    <Chip
-                      label="Записан"
-                      color="success"
-                      size="small"
-                      sx={{ mt: 1 }}
-                    />
-                  </CardContent>
-                  <CardActions>
-                    <Button size="small" onClick={() => navigate(`/class/${fitnessClass.classId}`)}>
-                      Подробнее
-                    </Button>
-                  </CardActions>
-                </Card>
+              {upcomingClasses.map((cls, idx) => (
+                <ClassCard
+                  key={cls.classId}
+                  cls={cls}
+                  past={false}
+                  showDivider={idx < upcomingClasses.length - 1}
+                  onDetails={() => navigate(`/class/${cls.classId}`)}
+                />
               ))}
             </Box>
           )}
 
-          {/* Прошедшие занятия */}
           {pastClasses.length > 0 && (
             <Box>
-              <Typography variant="h6" gutterBottom>
-                Прошедшие ({pastClasses.length})
+              {upcomingClasses.length > 0 && <Divider sx={{ mb: 3 }} />}
+              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                Прошедшие · {pastClasses.length}
               </Typography>
-              
-              {pastClasses.map((fitnessClass) => (
-                <Card key={fitnessClass.classId} sx={{ mb: 2, opacity: 0.6 }}>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      {fitnessClass.title}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Тренер: {fitnessClass.trainerName}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {format(new Date(fitnessClass.startDateTime), 'd MMMM yyyy, HH:mm', { locale: ru })}
-                    </Typography>
-                    <Chip
-                      label="Завершено"
-                      size="small"
-                      sx={{ mt: 1 }}
-                    />
-                  </CardContent>
-                  <CardActions>
-                    <Button size="small" onClick={() => navigate(`/class/${fitnessClass.classId}`)}>
-                      Подробнее
-                    </Button>
-                  </CardActions>
-                </Card>
+              {pastClasses.map((cls, idx) => (
+                <ClassCard
+                  key={cls.classId}
+                  cls={cls}
+                  past={true}
+                  showDivider={idx < pastClasses.length - 1}
+                  onDetails={() => navigate(`/class/${cls.classId}`)}
+                />
               ))}
             </Box>
           )}
         </>
       )}
     </Container>
+  )
+}
+
+interface ClassCardProps {
+  cls: FitnessClass
+  past: boolean
+  showDivider: boolean
+  onDetails: () => void
+}
+
+function ClassCard({ cls, past, showDivider, onDetails }: ClassCardProps) {
+  return (
+    <>
+      <Card sx={{ mb: 1, opacity: past ? 0.6 : 1 }}>
+        <CardContent sx={{ pb: 0 }}>
+          <Typography variant="h6" gutterBottom>
+            {cls.title}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {format(new Date(cls.startDateTime), 'd MMMM, HH:mm', { locale: ru })} — {format(new Date(cls.endDateTime), 'HH:mm')}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Тренер: {cls.trainerName}
+          </Typography>
+          <Chip
+            label={past ? 'Завершено' : 'Записан'}
+            color={past ? 'default' : 'success'}
+            size="small"
+            sx={{ mt: 1 }}
+          />
+        </CardContent>
+        <CardActions>
+          <Button size="small" onClick={onDetails}>
+            Подробнее
+          </Button>
+        </CardActions>
+      </Card>
+      {showDivider && <Divider sx={{ my: 1 }} />}
+    </>
   )
 }
