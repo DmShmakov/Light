@@ -34,7 +34,7 @@ export default function AdminDashboardPage() {
   ]
 
   return (
-    <Container maxWidth="md" sx={{ py: 2 }}>
+    <Container maxWidth="sm" sx={{ py: 2 }}>
       <Typography variant="h4" component="h1" gutterBottom>
         Админ-панель
       </Typography>
