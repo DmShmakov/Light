@@ -12,7 +12,16 @@ import Avatar from '@mui/material/Avatar'
 import AvatarGroup from '@mui/material/AvatarGroup'
 import Alert from '@mui/material/Alert'
 import IconButton from '@mui/material/IconButton'
+import Dialog from '@mui/material/Dialog'
+import DialogTitle from '@mui/material/DialogTitle'
+import DialogContent from '@mui/material/DialogContent'
+import List from '@mui/material/List'
+import ListItemButton from '@mui/material/ListItemButton'
+import ListItemIcon from '@mui/material/ListItemIcon'
+import ListItemText from '@mui/material/ListItemText'
 import ShareIcon from '@mui/icons-material/Share'
+import ContentCopyIcon from '@mui/icons-material/ContentCopy'
+import CloseIcon from '@mui/icons-material/Close'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { format, isPast, differenceInMinutes } from 'date-fns'
 import { ru } from 'date-fns/locale'
@@ -41,6 +50,7 @@ export default function ClassDetailsPage() {
   const [actionLoading, setActionLoading] = useState(false)
   const [isEnrolled, setIsEnrolled] = useState(false)
   const [enrollmentId, setEnrollmentId] = useState<string | null>(null)
+  const [shareDialogOpen, setShareDialogOpen] = useState(false)
 
   // Загрузка данных занятия
   useEffect(() => {
@@ -164,28 +174,28 @@ export default function ClassDetailsPage() {
     }
   }
 
-  // Поделиться занятием
-  const handleShare = async () => {
-    const shareUrl = `${window.location.origin}/class/${classId}`
-    
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: fitnessClass?.title,
-          text: `Записывайся на ${fitnessClass?.title}!`,
-          url: shareUrl,
-        })
-      } catch {
-        // Пользователь отменил partage
-      }
-    } else {
-      // Fallback: копирование в буфер обмена
-      try {
-        await navigator.clipboard.writeText(shareUrl)
-        notify({ message: 'Ссылка скопирована в буфер обмена', severity: 'success', duration: 3000 })
-      } catch {
-        notify({ message: 'Не удалось скопировать ссылку', severity: 'error', duration: 3000 })
-      }
+  const shareUrl = `${window.location.origin}/class/${classId}`
+
+  const handleCopyLink = async () => {
+    setShareDialogOpen(false)
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      notify({ message: 'Ссылка скопирована в буфер обмена', severity: 'success', duration: 3000 })
+    } catch {
+      notify({ message: 'Не удалось скопировать ссылку', severity: 'error', duration: 3000 })
+    }
+  }
+
+  const handleNativeShare = async () => {
+    setShareDialogOpen(false)
+    try {
+      await navigator.share({
+        title: fitnessClass?.title,
+        text: `Записывайся на ${fitnessClass?.title}!`,
+        url: shareUrl,
+      })
+    } catch {
+      // пользователь отменил
     }
   }
 
@@ -209,7 +219,7 @@ export default function ClassDetailsPage() {
           <ArrowBackIcon />
         </IconButton>
 
-        <IconButton onClick={handleShare}>
+        <IconButton onClick={() => setShareDialogOpen(true)} aria-label="Поделиться">
           <ShareIcon />
         </IconButton>
       </Box>
@@ -320,6 +330,29 @@ export default function ClassDetailsPage() {
           </>
         )}
       </Box>
+      {/* Диалог «Поделиться» */}
+      <Dialog open={shareDialogOpen} onClose={() => setShareDialogOpen(false)}>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          Поделиться занятием
+          <IconButton size="small" onClick={() => setShareDialogOpen(false)} aria-label="Закрыть">
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ p: 0 }}>
+          <List>
+            <ListItemButton onClick={handleCopyLink}>
+              <ListItemIcon><ContentCopyIcon /></ListItemIcon>
+              <ListItemText primary="Скопировать ссылку" />
+            </ListItemButton>
+            {typeof navigator.share === 'function' && (
+              <ListItemButton onClick={handleNativeShare}>
+                <ListItemIcon><ShareIcon /></ListItemIcon>
+                <ListItemText primary="Поделиться" />
+              </ListItemButton>
+            )}
+          </List>
+        </DialogContent>
+      </Dialog>
     </Container>
   )
 }
