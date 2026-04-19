@@ -14,6 +14,8 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
 import TextField from '@mui/material/TextField'
 import MenuItem from '@mui/material/MenuItem'
+import InputAdornment from '@mui/material/InputAdornment'
+import SearchIcon from '@mui/icons-material/Search'
 import Skeleton from '@mui/material/Skeleton'
 import Divider from '@mui/material/Divider'
 import LinearProgress from '@mui/material/LinearProgress'
@@ -63,6 +65,7 @@ export default function AdminUserSubscriptionsPage() {
 
   // Поля формы
   const [selectedUserId, setSelectedUserId] = useState('')
+  const [userSearch, setUserSearch] = useState('')
   const [selectedPlanId, setSelectedPlanId] = useState('')
   const [startDateStr, setStartDateStr] = useState('')
   const [extendDays, setExtendDays] = useState('30')
@@ -95,6 +98,7 @@ export default function AdminUserSubscriptionsPage() {
 
   const openAdd = () => {
     setSelectedUserId('')
+    setUserSearch('')
     setSelectedPlanId('')
     setStartDateStr(today)
     setDialogMode('add')
@@ -279,17 +283,46 @@ export default function AdminUserSubscriptionsPage() {
           {dialogMode === 'add' && (
             <>
               <TextField
+                label="Поиск пользователя"
+                fullWidth
+                value={userSearch}
+                onChange={(e) => { setUserSearch(e.target.value); setSelectedUserId('') }}
+                placeholder="Имя или email"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              <TextField
                 select
                 label="Пользователь"
                 fullWidth
                 value={selectedUserId}
                 onChange={(e) => setSelectedUserId(e.target.value)}
+                SelectProps={{ displayEmpty: true }}
               >
-                {users.map((u) => (
-                  <MenuItem key={u.uid} value={u.uid}>
-                    {u.name} {u.email ? `(${u.email})` : ''}
-                  </MenuItem>
-                ))}
+                <MenuItem value="" disabled>
+                  {userSearch
+                    ? users.filter((u) =>
+                        `${u.name} ${u.email ?? ''}`.toLowerCase().includes(userSearch.toLowerCase())
+                      ).length === 0
+                      ? 'Ничего не найдено'
+                      : 'Выберите из списка'
+                    : 'Начните вводить имя для поиска'}
+                </MenuItem>
+                {users
+                  .filter((u) =>
+                    !userSearch ||
+                    `${u.name} ${u.email ?? ''}`.toLowerCase().includes(userSearch.toLowerCase())
+                  )
+                  .map((u) => (
+                    <MenuItem key={u.uid} value={u.uid}>
+                      {u.name} {u.email ? `(${u.email})` : ''}
+                    </MenuItem>
+                  ))}
               </TextField>
               <TextField
                 select
