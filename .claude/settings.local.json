@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(gh auth *)",
+      "Bash(curl -s \"https://api.github.com/repos/DmShmakov/Light\")",
+      "Bash(curl -s \"https://api.github.com/repos/DmShmakov/Light/issues?state=open&per_page=10\")",
+      "Bash(python3 -c \"import sys, json; issues=json.load\\(sys.stdin\\); [print\\(f'#{i[\\\\\"number\\\\\"]} [{i[\\\\\"state\\\\\"]}] {i[\\\\\"title\\\\\"]}'\\) for i in issues]\")",
+      "Bash(node -e \"const d=require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\); const issues=JSON.parse\\(d\\); issues.forEach\\(i=>console.log\\('#'+i.number+' ['+i.state+'] '+i.title\\)\\)\")",
+      "Bash(export PATH=\"$PATH:/c/Program Files/GitHub CLI\")",
+      "Bash(gh issue *)",
+      "Bash(cat playwright.config.ts)",
+      "Bash(cat playwright.config.js)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(echo \"Exit: $?\")",
+      "Bash(npx playwright *)",
+      "Bash(gh run *)",
+      "Bash(npx vitest *)",
+      "Bash(node_modules/.bin/vitest run *)",
+      "Bash(cmd *)",
+      "WebFetch(domain:github.com)"
+    ]
+  }
+}

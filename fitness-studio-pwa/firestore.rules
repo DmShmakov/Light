@@ -64,9 +64,9 @@ service cloud.firestore {
       allow read: if request.auth != null &&
         (resource.data.userId == request.auth.uid || isAdmin());
 
-      // Пользователь создаёт абонемент на себя
+      // Пользователь создаёт абонемент на себя; админ — на любого пользователя
       allow create: if request.auth != null &&
-        request.resource.data.userId == request.auth.uid;
+        (request.resource.data.userId == request.auth.uid || isAdmin());
 
       // Обновление:
       // - Пользователь может обновлять только свой абонемент
