@@ -92,18 +92,28 @@ export const updateSubscriptionPlan = async (
 
 // ==================== АБОНЕМЕНТЫ ПОЛЬЗОВАТЕЛЕЙ ====================
 
-/** Текущий абонемент пользователя (статус unpaid или active) */
+/**
+ * Текущий абонемент пользователя.
+ * Запрашивает все абонементы пользователя и выбирает наиболее приоритетный:
+ * active → unpaid → exhausted (нужен для возврата визита при отмене записи).
+ * Запрос только по userId избегает необходимости составного индекса Firestore.
+ */
 export const getCurrentUserSubscription = async (
   userId: string
 ): Promise<UserSubscription | null> => {
   const q = query(
     collection(db, 'userSubscriptions'),
-    where('userId', '==', userId),
-    where('status', 'in', ['unpaid', 'active'])
+    where('userId', '==', userId)
   )
   const snap = await getDocs(q)
   if (snap.empty) return null
-  return docToSubscription(snap.docs[0])
+  const all = snap.docs.map(docToSubscription)
+  return (
+    all.find((s) => s.status === 'active') ??
+    all.find((s) => s.status === 'unpaid') ??
+    all.find((s) => s.status === 'exhausted') ??
+    null
+  )
 }
 
 /** Создать абонемент (пользователь или администратор) */
@@ -115,7 +125,9 @@ export const createUserSubscription = async (
   startDate: Date
 ): Promise<string> => {
   const existing = await getCurrentUserSubscription(userId)
-  if (existing) throw new Error('У пользователя уже есть активный абонемент')
+  if (existing && (existing.status === 'active' || existing.status === 'unpaid')) {
+    throw new Error('У пользователя уже есть активный абонемент')
+  }
 
   const expiresAt =
     plan.durationDays
