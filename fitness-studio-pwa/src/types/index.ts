@@ -142,6 +142,38 @@ export interface ClassWithEnrollment extends FitnessClass {
   totalEnrolled: number
 }
 
+// ==================== АБОНЕМЕНТЫ ====================
+
+export interface SubscriptionPlan {
+  planId: string
+  name: string
+  description: string
+  visitsCount: number | null   // null = безлимит по визитам
+  durationDays: number | null  // null = без ограничения срока
+  isActive: boolean
+  createdAt: Date
+}
+
+export type SubscriptionStatus = 'unpaid' | 'active' | 'expired' | 'exhausted'
+
+export interface UserSubscription {
+  subscriptionId: string
+  userId: string
+  userName: string             // денормализовано
+  userEmail: string            // денормализовано
+  planId: string
+  planName: string             // денормализовано на момент создания
+  visitsTotal: number | null   // скопировано из плана
+  visitsUsed: number
+  durationDays: number | null
+  startDate: Date | null       // выбирает пользователь
+  expiresAt: Date | null       // startDate + durationDays
+  status: SubscriptionStatus
+  enrolledClassIds: string[]   // classId занятий, привязанных к абонементу
+  createdAt: Date
+  updatedAt: Date
+}
+
 // Form types
 export interface LoginForm {
   email: string

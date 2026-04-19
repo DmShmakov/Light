@@ -26,10 +26,11 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { format, isPast, differenceInMinutes } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { getClassById, enrollInClass, cancelEnrollment, getEnrollmentsForClass, getUserEnrollments } from '../services/firestoreService'
+import { getCurrentUserSubscription, incrementSubscriptionVisit, decrementSubscriptionVisit, checkSubscriptionForClass } from '../services/subscriptionService'
 import { useAuthStore } from '../store/authStore'
 import { useScheduleStore } from '../store/scheduleStore'
 import { notify } from '../components/NotificationSnackbar'
-import { FitnessClass, Enrollment } from '../types'
+import { FitnessClass, Enrollment, UserSubscription } from '../types'
 
 const levelLabels: Record<string, string> = {
   beginner: 'Начальный',
@@ -51,6 +52,7 @@ export default function ClassDetailsPage() {
   const [isEnrolled, setIsEnrolled] = useState(false)
   const [enrollmentId, setEnrollmentId] = useState<string | null>(null)
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
+  const [subscription, setSubscription] = useState<UserSubscription | null>(null)
 
   // Загрузка данных занятия
   useEffect(() => {
@@ -85,6 +87,11 @@ export default function ClassDetailsPage() {
             setEnrollmentId(myEnrollment?.enrollmentId || null)
           }
         }
+        // Загрузка абонемента
+        if (user) {
+          const sub = await getCurrentUserSubscription(user.uid)
+          setSubscription(sub)
+        }
       } catch (error) {
         console.error('Ошибка загрузки данных:', error)
       } finally {
@@ -99,6 +106,12 @@ export default function ClassDetailsPage() {
   const handleEnroll = async () => {
     if (!user || !classId || !fitnessClass) {
       navigate('/login')
+      return
+    }
+
+    const subCheck = checkSubscriptionForClass(subscription, fitnessClass.startDateTime)
+    if (!subCheck.valid) {
+      navigate('/subscription')
       return
     }
 
@@ -122,6 +135,13 @@ export default function ClassDetailsPage() {
         waitlistPosition: null,
       }
       setEnrollments((prev) => [...prev, fakeEnrollment])
+
+      // Списываем визит с абонемента
+      if (subscription) {
+        await incrementSubscriptionVisit(subscription.subscriptionId, classId)
+        const updated = await getCurrentUserSubscription(user.uid)
+        setSubscription(updated)
+      }
 
       // Уведомление через глобальный Snackbar
       notify({
@@ -155,6 +175,13 @@ export default function ClassDetailsPage() {
 
       // Обновляем список записей локально
       setEnrollments((prev) => prev.filter((e) => e.enrollmentId !== enrollmentId))
+
+      // Возвращаем визит (если отмена в срок)
+      if (subscription && canCancel) {
+        await decrementSubscriptionVisit(subscription.subscriptionId, classId!)
+        const updated = await getCurrentUserSubscription(user!.uid)
+        setSubscription(updated)
+      }
 
       // Уведомление
       notify({
@@ -297,15 +324,35 @@ export default function ClassDetailsPage() {
       {/* Кнопки действий */}
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         {!isEnrolled ? (
+          <>
+            {!isClassPast && (() => {
+              const check = checkSubscriptionForClass(subscription, fitnessClass.startDateTime)
+              if (!check.valid) return (
+                <Alert severity="warning" sx={{ mb: 0.5 }}>
+                  {check.reason} —{' '}
+                  <Typography
+                    component="span"
+                    variant="body2"
+                    color="primary"
+                    sx={{ cursor: 'pointer', textDecoration: 'underline' }}
+                    onClick={() => navigate('/subscription')}
+                  >
+                    управление абонементом
+                  </Typography>
+                </Alert>
+              )
+              return null
+            })()}
           <Button
             variant="contained"
             size="large"
             fullWidth
             onClick={handleEnroll}
-            disabled={isClassPast || actionLoading}
+            disabled={isClassPast || actionLoading || !checkSubscriptionForClass(subscription, fitnessClass.startDateTime).valid}
           >
             {isClassPast ? 'Занятие завершено' : actionLoading ? 'Запись...' : 'Записаться'}
           </Button>
+          </>
         ) : (
           <>
             <Alert severity="success" sx={{ mb: 1 }}>

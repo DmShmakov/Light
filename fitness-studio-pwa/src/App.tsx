@@ -24,6 +24,9 @@ import AdminSchedulePage from './pages/admin/AdminSchedulePage'
 import AdminCreateClassPage from './pages/admin/AdminCreateClassPage'
 import AdminParticipantsPage from './pages/admin/AdminParticipantsPage'
 import AdminUsersPage from './pages/admin/AdminUsersPage'
+import AdminSubscriptionPlansPage from './pages/admin/AdminSubscriptionPlansPage'
+import AdminUserSubscriptionsPage from './pages/admin/AdminUserSubscriptionsPage'
+import SubscriptionPage from './pages/SubscriptionPage'
 
 // Notification handler
 import { NotificationHandler } from './components/NotificationSnackbar'
@@ -119,6 +122,7 @@ function App() {
         <Route path="my-enrollments" element={<MyEnrollmentsPage />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="notifications" element={<NotificationSettingsPage />} />
+        <Route path="subscription" element={<SubscriptionPage />} />
 
         {/* Admin routes — внутри MainPage чтобы была навигация */}
         <Route
@@ -166,6 +170,22 @@ function App() {
           element={
             <ProtectedRoute requireAdmin>
               <AdminUsersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="admin/subscriptions"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminUserSubscriptionsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="admin/subscription-plans"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminSubscriptionPlansPage />
             </ProtectedRoute>
           }
         />

@@ -17,6 +17,7 @@ import LogoutIcon from '@mui/icons-material/Logout'
 import NotificationIcon from '@mui/icons-material/Notifications'
 import { useAuthStore } from '../store/authStore'
 import { logout } from '../services/authService'
+import SubscriptionStatus from '../components/SubscriptionStatus'
 
 export default function ProfilePage() {
   const navigate = useNavigate()
@@ -50,6 +51,9 @@ export default function ProfilePage() {
           {user.name}
         </Typography>
       </Box>
+
+      {/* Абонемент */}
+      <SubscriptionStatus />
 
       {/* Информация о пользователе */}
       <List sx={{ mb: 2 }}>

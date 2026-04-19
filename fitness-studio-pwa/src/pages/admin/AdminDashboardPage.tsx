@@ -8,6 +8,8 @@ import CardActionArea from '@mui/material/CardActionArea'
 import EventIcon from '@mui/icons-material/Event'
 import PeopleIcon from '@mui/icons-material/People'
 import AddCircleIcon from '@mui/icons-material/AddCircle'
+import CardMembershipIcon from '@mui/icons-material/CardMembership'
+import EditNoteIcon from '@mui/icons-material/EditNote'
 
 export default function AdminDashboardPage() {
   const navigate = useNavigate()
@@ -30,6 +32,18 @@ export default function AdminDashboardPage() {
       description: 'Список всех пользователей',
       icon: <PeopleIcon sx={{ fontSize: 40 }} />,
       path: '/admin/users',
+    },
+    {
+      title: 'Управление абонементами',
+      description: 'Абонементы пользователей, оплата, продление',
+      icon: <CardMembershipIcon sx={{ fontSize: 40 }} />,
+      path: '/admin/subscriptions',
+    },
+    {
+      title: 'Типы абонементов',
+      description: 'Создание и редактирование тарифов',
+      icon: <EditNoteIcon sx={{ fontSize: 40 }} />,
+      path: '/admin/subscription-plans',
     },
   ]
 
