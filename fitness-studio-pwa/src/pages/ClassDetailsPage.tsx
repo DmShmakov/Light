@@ -176,10 +176,13 @@ export default function ClassDetailsPage() {
       // Обновляем список записей локально
       setEnrollments((prev) => prev.filter((e) => e.enrollmentId !== enrollmentId))
 
-      // Возвращаем визит (если отмена в срок)
-      if (subscription && canCancel) {
-        await decrementSubscriptionVisit(subscription.subscriptionId, classId!)
-        const updated = await getCurrentUserSubscription(user!.uid)
+      // Возвращаем визит при отмене (кнопка показывается только при canCancel,
+      // поэтому дополнительная проверка не нужна).
+      // Если subscription не был загружен при монтировании — догружаем.
+      const activeSub = subscription ?? (user ? await getCurrentUserSubscription(user.uid) : null)
+      if (activeSub) {
+        await decrementSubscriptionVisit(activeSub.subscriptionId, classId!)
+        const updated = user ? await getCurrentUserSubscription(user.uid) : null
         setSubscription(updated)
       }
 
