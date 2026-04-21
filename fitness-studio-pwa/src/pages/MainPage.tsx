@@ -9,6 +9,7 @@ import PersonIcon from '@mui/icons-material/Person'
 import Box from '@mui/material/Box'
 import { useEffect, useState } from 'react'
 import { useAuthStore } from '../store/authStore'
+import { buildNavConfig, getActiveNavIndex } from './mainPageNav'
 
 interface NavItem {
   label: string
@@ -16,25 +17,19 @@ interface NavItem {
   icon: React.ReactNode
 }
 
-function buildNavItems(isAdmin: boolean, isTrainer: boolean): NavItem[] {
-  const items: NavItem[] = [
-    { label: 'Расписание', path: '/', icon: <CalendarTodayIcon /> },
-    { label: 'Мои записи', path: '/my-enrollments', icon: <EventNoteIcon /> },
-  ]
-  if (isTrainer) {
-    items.push({ label: 'Мои занятия', path: '/trainer/my-classes', icon: <FitnessCenterIcon /> })
-  }
-  if (isAdmin) {
-    items.push({ label: 'Админ', path: '/admin', icon: <AdminPanelSettingsIcon /> })
-  }
-  items.push({ label: 'Профиль', path: '/profile', icon: <PersonIcon /> })
-  return items
+const NAV_ICONS: Record<string, React.ReactNode> = {
+  'Расписание': <CalendarTodayIcon />,
+  'Мои записи': <EventNoteIcon />,
+  'Мои занятия': <FitnessCenterIcon />,
+  'Админ': <AdminPanelSettingsIcon />,
+  'Профиль': <PersonIcon />,
 }
 
-function getActiveIndex(pathname: string, items: NavItem[]): number {
-  if (pathname === '/' || pathname.startsWith('/class/')) return 0
-  const idx = items.findIndex((item) => item.path !== '/' && pathname.startsWith(item.path))
-  return idx >= 0 ? idx : 0
+function buildNavItems(isAdmin: boolean, isTrainer: boolean): NavItem[] {
+  return buildNavConfig(isAdmin, isTrainer).map((cfg) => ({
+    ...cfg,
+    icon: NAV_ICONS[cfg.label],
+  }))
 }
 
 export default function MainPage() {
@@ -44,10 +39,10 @@ export default function MainPage() {
 
   const navItems = buildNavItems(isAdmin, isTrainer)
 
-  const [value, setValue] = useState(() => getActiveIndex(location.pathname, navItems))
+  const [value, setValue] = useState(() => getActiveNavIndex(location.pathname, navItems))
 
   useEffect(() => {
-    setValue(getActiveIndex(location.pathname, navItems))
+    setValue(getActiveNavIndex(location.pathname, navItems))
   }, [location.pathname, isAdmin, isTrainer])
 
   return (
