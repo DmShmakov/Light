@@ -1,7 +1,7 @@
 # Техническая документация: Модуль абонементов (Subscription Module)
 
-**Версия:** 1.0  
-**Дата:** 20 апреля 2026 г.  
+**Версия:** 1.1  
+**Дата:** 21 апреля 2026 г.  
 **Статус:** Реализован (клиентская часть)
 
 ---
@@ -16,6 +16,7 @@
 - Самостоятельный выбор абонемента пользователем с указанием даты начала
 - Подтверждение оплаты администратором
 - Автоматическое списание визитов при записи и возврат при отмене
+- Автоматическое восстановление статуса `active` из `exhausted` при отмене последней записи
 - Управление абонементами пользователей из админ-панели
 
 ### 1.2. Архитектура
@@ -92,6 +93,7 @@
 unpaid ──(admin: setSubscriptionPaid)──▶ active
 active ──(visitsUsed == visitsTotal)──▶ exhausted
 active ──(now > expiresAt)──▶ expired     ← runtime-проверка или Cloud Function
+exhausted ──(decrementSubscriptionVisit, срок не истёк)──▶ active
 ```
 
 | Статус | Значение | Цвет в UI |
@@ -111,7 +113,7 @@ active ──(now > expiresAt)──▶ expired     ← runtime-проверка
 
 | Функция | Доступ | Описание |
 |---|---|---|
-| `getActiveSubscriptionPlans()` | Все | Тарифы с `isActive: true` |
+| `getActiveSubscriptionPlans()` | Все | Тарифы с `isActive: true`, отсортированы по `createdAt` |
 | `getAllSubscriptionPlans()` | Админ | Все тарифы включая скрытые |
 | `createSubscriptionPlan(data)` | Админ | Создать тариф |
 | `updateSubscriptionPlan(planId, data)` | Админ | Обновить тариф |
@@ -120,14 +122,30 @@ active ──(now > expiresAt)──▶ expired     ← runtime-проверка
 
 | Функция | Доступ | Описание |
 |---|---|---|
-| `getCurrentUserSubscription(userId)` | Пользователь | Активный или неоплаченный абонемент |
+| `getCurrentUserSubscription(userId)` | Пользователь | Наиболее приоритетный абонемент пользователя (см. ниже) |
 | `createUserSubscription(userId, ...)` | Пользователь/Админ | Создать абонемент (статус `unpaid`) |
 | `setSubscriptionPaid(subscriptionId)` | Админ | Перевести в `active` |
 | `changeSubscriptionPlan(subscriptionId, plan)` | Админ | Сменить тариф, `visitsUsed` сохраняется |
-| `extendSubscription(subscriptionId, days)` | Админ | Сдвинуть `expiresAt` на N дней |
-| `getAllSubscriptions()` | Админ | Все абонементы всех пользователей |
-| `incrementSubscriptionVisit(subId, classId)` | Клиент | Списать визит, привязать занятие |
-| `decrementSubscriptionVisit(subId, classId)` | Клиент | Вернуть визит, отвязать занятие |
+| `extendSubscription(subscriptionId, days)` | Админ | Сдвинуть `expiresAt` на N дней от текущего значения |
+| `getAllSubscriptions()` | Админ | Все абонементы всех пользователей, сортировка по `createdAt desc` |
+| `incrementSubscriptionVisit(subId, classId)` | Клиент | Списать визит, привязать занятие; при исчерпании → `exhausted` |
+| `decrementSubscriptionVisit(subId, classId)` | Клиент | Вернуть визит, отвязать занятие; при восстановлении → `active` |
+
+#### `getCurrentUserSubscription` — логика выбора абонемента
+
+Функция запрашивает **все** абонементы пользователя по `userId` и выбирает наиболее приоритетный:
+
+```
+active → unpaid → exhausted → null
+```
+
+Статус `expired` игнорируется — такой абонемент не возвращается.
+
+> **Важно:** запрос использует только `where('userId', '==', userId)` без фильтрации по статусу в Firestore. Это позволяет избежать необходимости составного индекса `(userId, status)` и гарантирует доступность абонемента со статусом `exhausted` в момент отмены записи на занятие.
+
+#### `createUserSubscription` — защита от дублирования
+
+Создание блокируется только при наличии абонемента со статусом `active` или `unpaid`. Абонемент со статусом `exhausted` **не блокирует** создание нового — пользователь может получить новый абонемент после исчерпания предыдущего.
 
 ### 3.3. Проверка валидности
 
@@ -138,13 +156,16 @@ checkSubscriptionForClass(
 ): { valid: boolean; reason: string }
 ```
 
-Последовательность проверок:
-1. Абонемент существует
-2. Статус `active`
-3. `now <= expiresAt` (runtime-проверка истечения)
-4. `classDate >= startDate`
-5. `classDate <= expiresAt`
-6. `visitsUsed < visitsTotal` (если не безлимит)
+Последовательность проверок (в порядке выполнения):
+
+1. Абонемент существует (`subscription !== null`)
+2. Статус не `unpaid` → «Абонемент не оплачен»
+3. Статус не `exhausted` → «Визиты исчерпаны»
+4. Статус не `expired` → «Срок абонемента истёк»
+5. `now <= expiresAt` (runtime-проверка истечения, если Cloud Function не обновил статус)
+6. `classDate >= startDate` — занятие в пределах начала абонемента
+7. `classDate <= expiresAt` — занятие в пределах срока абонемента
+8. `visitsUsed < visitsTotal` — визиты не исчерпаны (пропускается при `visitsTotal = null`)
 
 ---
 
@@ -166,24 +187,32 @@ checkSubscriptionForClass(
 ```
 ClassDetailsPage.handleEnroll()
   → checkSubscriptionForClass(subscription, classDate)
-  │   ├── valid: false → navigate('/subscription') + Alert с причиной
+  │   ├── valid: false → Alert с причиной + кнопка «Записаться» disabled
+  │   │               → ссылка на /subscription
   │   └── valid: true  → enrollInClass(classId, userId, classDate)
   │                     → incrementSubscriptionVisit(subscriptionId, classId)
+  │                     │   └── если visitsUsed >= visitsTotal → status = 'exhausted'
   │                     → обновить subscription в локальном state
-  └── Snackbar "Вы успешно записаны"
+  └── Snackbar "Вы записаны на «...»"
 ```
 
 ### 4.3. Отмена записи
 
+Кнопка «Отменить запись» отображается только при `canCancel = isEnrolled && !isClassPast && minutesUntilStart > 60`.
+
 ```
 ClassDetailsPage.handleCancel()
   → cancelEnrollment(enrollmentId)
-  → если canCancel (> 60 мин до начала):
-  │   → decrementSubscriptionVisit(subscriptionId, classId)
-  │   → визит возвращается, classId удаляется из enrolledClassIds
-  │   → если статус был exhausted → возвращается в active
-  └── Snackbar "Запись отменена"
+  → decrementSubscriptionVisit(subscriptionId, classId)
+  │   ├── visitsUsed-- (Firestore increment(-1))
+  │   ├── classId удаляется из enrolledClassIds (arrayRemove)
+  │   └── если status == 'exhausted' && newVisitsUsed < visitsTotal && срок не истёк:
+  │           → status = 'active'   ← восстановление из исчерпанного
+  → обновить subscription в локальном state
+  └── Snackbar "Запись отменена."
 ```
+
+> **Примечание:** `decrementSubscriptionVisit` вызывается безусловно — защита от «слишком поздно» осуществляется на уровне UI (кнопка не показывается, если `canCancel = false`).
 
 ### 4.4. Исчерпание абонемента
 
@@ -194,6 +223,10 @@ incrementSubscriptionVisit()
   │   → status = 'exhausted'
   └── При следующей попытке записи: "Визиты исчерпаны" → /subscription
 ```
+
+После исчерпания пользователь может:
+- Купить новый абонемент (`createUserSubscription` не блокирует при `exhausted`)
+- Отменить одну из ранее оформленных записей — тогда визит возвращается и статус восстанавливается в `active`
 
 ---
 
@@ -245,21 +278,27 @@ incrementSubscriptionVisit()
 
 ### 5.3. Страница занятия — блок записи
 
-**Нет абонемента / не оплачен:**
+**Нет абонемента / не оплачен / исчерпан / вне срока:**
 ```
-⚠ Нет абонемента — управление абонементом   [ссылка]
-[ Записаться ]   ← задизейблена
-```
-
-**Вне срока абонемента:**
-```
-⚠ Занятие вне срока абонемента — управление абонементом
-[ Записаться ]   ← задизейблена
+⚠ <причина> — управление абонементом   [ссылка]
+[ Записаться ]   ← disabled
 ```
 
 **Абонемент валиден:**
 ```
-[ Записаться ]   ← активна
+[ Записаться ]   ← enabled
+```
+
+**Уже записан, отмена доступна (> 60 мин до начала):**
+```
+✓ Вы записаны на это занятие
+[ Отменить запись ]
+```
+
+**Уже записан, отмена недоступна:**
+```
+✓ Вы записаны на это занятие
+  Отмена возможна не позднее чем за 60 минут до начала занятия
 ```
 
 ---
@@ -282,8 +321,8 @@ CRUD тарифных планов. Форма включает:
 |---|---|---|
 | Отметить оплаченным | `status = unpaid` | `status → active` |
 | Сменить план | Любой статус | Меняет `planId`, `planName`, `visitsTotal`, `durationDays`; `visitsUsed` сохраняется |
-| Продлить | Есть `durationDays` | `expiresAt += N дней` |
-| Добавить абонемент | — | Создаёт абонемент любому пользователю |
+| Продлить | Есть `durationDays` | `expiresAt += N дней` от текущего значения `expiresAt` |
+| Добавить абонемент | — | Создаёт абонемент любому пользователю; поиск пользователя через Autocomplete по имени/email |
 
 ---
 
@@ -300,10 +339,15 @@ match /subscriptionPlans/{planId} {
 match /userSubscriptions/{subscriptionId} {
   allow read: if request.auth != null &&
     (resource.data.userId == request.auth.uid || isAdmin());
+
+  // Пользователь создаёт на себя; админ — на любого пользователя
   allow create: if request.auth != null &&
-    request.resource.data.userId == request.auth.uid;
+    (request.resource.data.userId == request.auth.uid || isAdmin());
+
+  // Пользователь обновляет свой (списание/возврат визитов); админ — любой
   allow update: if request.auth != null &&
     (resource.data.userId == request.auth.uid || isAdmin());
+
   allow delete: if isAdmin();
 }
 ```
@@ -316,10 +360,11 @@ match /userSubscriptions/{subscriptionId} {
 
 Создаются в Firebase Console → Firestore → Indexes → Composite:
 
-| Коллекция | Поля | Тип |
-|---|---|---|
-| `userSubscriptions` | `userId ASC`, `status ASC` | Composite |
-| `subscriptionPlans` | `isActive ASC`, `createdAt ASC` | Composite |
+| Коллекция | Поля | Тип | Назначение |
+|---|---|---|---|
+| `subscriptionPlans` | `isActive ASC`, `createdAt ASC` | Composite | `getActiveSubscriptionPlans()` |
+
+> **Примечание:** запрос `getCurrentUserSubscription` намеренно использует только `where('userId', '==', ...)` без фильтрации по `status`, поэтому составной индекс `(userId, status)` **не требуется**.
 
 ---
 
@@ -328,7 +373,7 @@ match /userSubscriptions/{subscriptionId} {
 ### 9.1. Текущие ограничения
 
 - **Автоматическое истечение** — статус `expired` не проставляется автоматически. Используется runtime-проверка `now > expiresAt` в `checkSubscriptionForClass`. Для корректного отображения везде рекомендуется добавить Cloud Function по расписанию.
-- **Один активный абонемент** — у пользователя не может быть двух одновременных абонементов. При необходимости потребуется переработка логики выбора абонемента.
+- **Один активный абонемент** — у пользователя не может быть двух одновременных абонементов со статусом `active` или `unpaid`. После исчерпания (`exhausted`) можно получить новый абонемент без ожидания.
 - **Без интеграции оплаты** — оплата подтверждается вручную администратором. Интеграция с эквайрингом (ЮKassa и др.) является отдельной задачей.
 
 ### 9.2. Рекомендуемые доработки
