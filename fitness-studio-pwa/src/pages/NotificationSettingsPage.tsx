@@ -18,7 +18,16 @@ import Tooltip from '@mui/material/Tooltip'
 import { useAuthStore } from '../store/authStore'
 import { useNotifications } from '../hooks/useNotifications'
 import { notify } from '../components/NotificationSnackbar'
-import { NotificationType, NOTIFICATION_TYPE_LABELS } from '../types'
+import { NotificationType, NOTIFICATION_TYPE_LABELS, TRAINER_NOTIFICATION_TYPES } from '../types'
+
+const GENERAL_NOTIFICATION_TYPES: NotificationType[] = [
+  'enrollment_confirmed',
+  'class_reminder',
+  'class_changed',
+  'class_cancelled',
+  'waitlist_opening',
+  'admin_notifications',
+]
 
 export default function NotificationSettingsPage() {
   const navigate = useNavigate()
@@ -134,27 +143,51 @@ export default function NotificationSettingsPage() {
 
       {/* Типы уведомлений */}
       {isEnabled && permission === 'granted' && (
-        <List disablePadding>
-          {(Object.keys(NOTIFICATION_TYPE_LABELS) as NotificationType[]).map((type) => (
-            <ListItem key={type} disablePadding sx={{ py: 0.5 }}>
-              <ListItemText
-                primary={NOTIFICATION_TYPE_LABELS[type]}
-                secondary={
-                  type === 'class_reminder'
-                    ? 'За 2 часа до занятия'
-                    : type === 'admin_notifications'
-                    ? 'Только для администраторов'
-                    : undefined
-                }
-              />
-              <Switch
-                checked={notificationTypes[type] ?? true}
-                onChange={() => handleTypeToggle(type)}
-                disabled={isLoading || (type === 'admin_notifications' && !user?.roles.includes('admin'))}
-              />
-            </ListItem>
-          ))}
-        </List>
+        <>
+          <List disablePadding>
+            {GENERAL_NOTIFICATION_TYPES.map((type) => (
+              <ListItem key={type} disablePadding sx={{ py: 0.5 }}>
+                <ListItemText
+                  primary={NOTIFICATION_TYPE_LABELS[type]}
+                  secondary={
+                    type === 'class_reminder'
+                      ? 'За 2 часа до занятия'
+                      : type === 'admin_notifications'
+                      ? 'Только для администраторов'
+                      : undefined
+                  }
+                />
+                <Switch
+                  checked={notificationTypes[type] ?? true}
+                  onChange={() => handleTypeToggle(type)}
+                  disabled={isLoading || (type === 'admin_notifications' && !user?.roles.includes('admin'))}
+                />
+              </ListItem>
+            ))}
+          </List>
+
+          {/* Тренерские уведомления — только для пользователей с ролью trainer */}
+          {user?.roles.includes('trainer') && (
+            <>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                Для тренеров
+              </Typography>
+              <List disablePadding>
+                {TRAINER_NOTIFICATION_TYPES.map((type) => (
+                  <ListItem key={type} disablePadding sx={{ py: 0.5 }}>
+                    <ListItemText primary={NOTIFICATION_TYPE_LABELS[type]} />
+                    <Switch
+                      checked={notificationTypes[type] ?? true}
+                      onChange={() => handleTypeToggle(type)}
+                      disabled={isLoading}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </>
+          )}
+        </>
       )}
 
       {/* Кнопка включения если отключено */}

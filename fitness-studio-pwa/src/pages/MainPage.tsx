@@ -4,50 +4,51 @@ import BottomNavigationAction from '@mui/material/BottomNavigationAction'
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
 import EventNoteIcon from '@mui/icons-material/EventNote'
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
+import FitnessCenterIcon from '@mui/icons-material/FitnessCenter'
 import PersonIcon from '@mui/icons-material/Person'
 import Box from '@mui/material/Box'
 import { useEffect, useState } from 'react'
 import { useAuthStore } from '../store/authStore'
 
+interface NavItem {
+  label: string
+  path: string
+  icon: React.ReactNode
+}
+
+function buildNavItems(isAdmin: boolean, isTrainer: boolean): NavItem[] {
+  const items: NavItem[] = [
+    { label: 'Расписание', path: '/', icon: <CalendarTodayIcon /> },
+    { label: 'Мои записи', path: '/my-enrollments', icon: <EventNoteIcon /> },
+  ]
+  if (isTrainer) {
+    items.push({ label: 'Мои занятия', path: '/trainer/my-classes', icon: <FitnessCenterIcon /> })
+  }
+  if (isAdmin) {
+    items.push({ label: 'Админ', path: '/admin', icon: <AdminPanelSettingsIcon /> })
+  }
+  items.push({ label: 'Профиль', path: '/profile', icon: <PersonIcon /> })
+  return items
+}
+
+function getActiveIndex(pathname: string, items: NavItem[]): number {
+  if (pathname === '/' || pathname.startsWith('/class/')) return 0
+  const idx = items.findIndex((item) => item.path !== '/' && pathname.startsWith(item.path))
+  return idx >= 0 ? idx : 0
+}
+
 export default function MainPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { isAdmin } = useAuthStore()
+  const { isAdmin, isTrainer } = useAuthStore()
 
-  // Определяем количество кнопок навигации
-  const navItems = isAdmin
-    ? [
-        { label: 'Расписание', path: '/', index: 0, icon: <CalendarTodayIcon /> },
-        { label: 'Мои записи', path: '/my-enrollments', index: 1, icon: <EventNoteIcon /> },
-        { label: 'Админ', path: '/admin', index: 2, icon: <AdminPanelSettingsIcon /> },
-        { label: 'Профиль', path: '/profile', index: 3, icon: <PersonIcon /> },
-      ]
-    : [
-        { label: 'Расписание', path: '/', index: 0, icon: <CalendarTodayIcon /> },
-        { label: 'Мои записи', path: '/my-enrollments', index: 1, icon: <EventNoteIcon /> },
-        { label: 'Профиль', path: '/profile', index: 2, icon: <PersonIcon /> },
-      ]
+  const navItems = buildNavItems(isAdmin, isTrainer)
 
-  // Синхронизация навигации с текущим URL
+  const [value, setValue] = useState(() => getActiveIndex(location.pathname, navItems))
+
   useEffect(() => {
-    if (location.pathname === '/' || location.pathname.startsWith('/class/')) {
-      setValue(0)
-    } else if (location.pathname === '/my-enrollments') {
-      setValue(1)
-    } else if (isAdmin && location.pathname.startsWith('/admin')) {
-      setValue(2)
-    } else if (location.pathname === '/profile') {
-      setValue(isAdmin ? 3 : 2)
-    }
-  }, [location, isAdmin])
-
-  const [value, setValue] = useState(() => {
-    if (location.pathname === '/' || location.pathname.startsWith('/class/')) return 0
-    if (location.pathname === '/my-enrollments') return 1
-    if (isAdmin && location.pathname.startsWith('/admin')) return 2
-    if (location.pathname === '/profile') return isAdmin ? 3 : 2
-    return 0
-  })
+    setValue(getActiveIndex(location.pathname, navItems))
+  }, [location.pathname, isAdmin, isTrainer])
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', pb: 7 }}>
@@ -59,10 +60,8 @@ export default function MainPage() {
         value={value}
         onChange={(_event, newValue: number) => {
           setValue(newValue)
-          const item = navItems.find((i) => i.index === newValue)
-          if (item) {
-            navigate(item.path)
-          }
+          const item = navItems[newValue]
+          if (item) navigate(item.path)
         }}
         sx={{
           position: 'fixed',

@@ -18,6 +18,9 @@ import MyEnrollmentsPage from './pages/MyEnrollmentsPage'
 import ProfilePage from './pages/ProfilePage'
 import NotificationSettingsPage from './pages/NotificationSettingsPage'
 
+// Trainer pages
+import TrainerMyClassesPage from './pages/trainer/TrainerMyClassesPage'
+
 // Admin pages
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import AdminSchedulePage from './pages/admin/AdminSchedulePage'
@@ -77,8 +80,16 @@ function HomeRoute() {
 }
 
 // Protected route component
-function ProtectedRoute({ children, requireAdmin = false }: { children: React.ReactNode; requireAdmin?: boolean }) {
-  const { user, loading, isAdmin } = useAuthStore()
+function ProtectedRoute({
+  children,
+  requireAdmin = false,
+  requireTrainer = false,
+}: {
+  children: React.ReactNode
+  requireAdmin?: boolean
+  requireTrainer?: boolean
+}) {
+  const { user, loading, isAdmin, isTrainer } = useAuthStore()
   const location = useLocation()
 
   if (loading) {
@@ -93,6 +104,10 @@ function ProtectedRoute({ children, requireAdmin = false }: { children: React.Re
   }
 
   if (requireAdmin && !isAdmin) {
+    return <Navigate to="/" replace />
+  }
+
+  if (requireTrainer && !isTrainer) {
     return <Navigate to="/" replace />
   }
 
@@ -123,6 +138,16 @@ function App() {
         <Route path="profile" element={<ProfilePage />} />
         <Route path="notifications" element={<NotificationSettingsPage />} />
         <Route path="subscription" element={<SubscriptionPage />} />
+
+        {/* Trainer routes */}
+        <Route
+          path="trainer/my-classes"
+          element={
+            <ProtectedRoute requireTrainer>
+              <TrainerMyClassesPage />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Admin routes — внутри MainPage чтобы была навигация */}
         <Route

@@ -240,6 +240,8 @@ export default function ClassDetailsPage() {
   const isClassPast = isPast(new Date(fitnessClass.endDateTime))
   const minutesUntilStart = differenceInMinutes(new Date(fitnessClass.startDateTime), new Date())
   const canCancel = isEnrolled && !isClassPast && minutesUntilStart > 60 // TODO: получить из настроек
+  const isOwnClass = fitnessClass.trainerId === user?.uid
+  const canSeeParticipants = isAdmin || isOwnClass
 
   return (
     <Container maxWidth="sm" sx={{ py: 2 }}>
@@ -299,8 +301,8 @@ export default function ClassDetailsPage() {
         </CardContent>
       </Card>
 
-      {/* Список участников — только для админов */}
-      {isAdmin && (
+      {/* Список участников — для администраторов и тренера этого занятия */}
+      {canSeeParticipants && (
         <Card sx={{ mb: 2 }}>
           <CardContent>
             <Typography variant="h6" gutterBottom>

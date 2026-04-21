@@ -10,7 +10,7 @@ export interface User {
   preferences?: UserPreferences
 }
 
-export type UserRole = 'client' | 'admin'
+export type UserRole = 'client' | 'admin' | 'trainer'
 
 export interface UserPreferences {
   favoriteTypes?: string[]
@@ -25,6 +25,9 @@ export interface NotificationTypePreferences {
   class_cancelled?: boolean
   waitlist_opening?: boolean
   admin_notifications?: boolean
+  trainer_assigned?: boolean
+  participant_enrolled?: boolean
+  participant_cancelled?: boolean
 }
 
 // Notification types
@@ -35,6 +38,10 @@ export type NotificationType =
   | 'class_cancelled'
   | 'waitlist_opening'
   | 'admin_notifications'
+  // Тренерские уведомления
+  | 'trainer_assigned'
+  | 'participant_enrolled'
+  | 'participant_cancelled'
 
 export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   enrollment_confirmed: 'Подтверждение записи',
@@ -43,7 +50,17 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   class_cancelled: 'Отмена занятия',
   waitlist_opening: 'Освобождение места',
   admin_notifications: 'Административные',
+  trainer_assigned: 'Назначение на занятие',
+  participant_enrolled: 'Запись участника на ваше занятие',
+  participant_cancelled: 'Отмена участником записи',
 }
+
+// Уведомления, доступные только тренерам
+export const TRAINER_NOTIFICATION_TYPES: NotificationType[] = [
+  'trainer_assigned',
+  'participant_enrolled',
+  'participant_cancelled',
+]
 
 export const DEFAULT_NOTIFICATION_TYPES: NotificationTypePreferences = {
   enrollment_confirmed: true,
@@ -52,6 +69,9 @@ export const DEFAULT_NOTIFICATION_TYPES: NotificationTypePreferences = {
   class_cancelled: true,
   waitlist_opening: true,
   admin_notifications: true,
+  trainer_assigned: true,
+  participant_enrolled: true,
+  participant_cancelled: true,
 }
 
 // FCM Token

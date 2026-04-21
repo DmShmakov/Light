@@ -11,9 +11,11 @@ import {
   deleteDoc,
   Timestamp,
   serverTimestamp,
+  arrayUnion,
+  arrayRemove,
 } from 'firebase/firestore'
 import { db } from './firebase'
-import { FitnessClass, Enrollment, AppSettings } from '../types'
+import { FitnessClass, Enrollment, AppSettings, User } from '../types'
 
 // ==================== ЗАНЯТИЯ ====================
 
@@ -220,6 +222,63 @@ export const cancelEnrollment = async (enrollmentId: string): Promise<void> => {
   const enrollmentRef = doc(db, 'enrollments', enrollmentId)
   await updateDoc(enrollmentRef, {
     status: 'cancelled',
+  })
+}
+
+// ==================== ТРЕНЕРЫ ====================
+
+// Занятия тренера за диапазон дат
+export const getTrainerClasses = async (
+  userId: string,
+  startDate: Date,
+  endDate: Date
+): Promise<FitnessClass[]> => {
+  const q = query(
+    collection(db, 'classes'),
+    where('trainerId', '==', userId),
+    where('startDateTime', '>=', Timestamp.fromDate(startDate)),
+    where('startDateTime', '<=', Timestamp.fromDate(endDate)),
+    orderBy('startDateTime', 'asc')
+  )
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => {
+    const data = d.data()
+    return {
+      classId: d.id,
+      title: data.title,
+      type: data.type,
+      trainerId: data.trainerId,
+      trainerName: data.trainerName,
+      startDateTime: data.startDateTime.toDate(),
+      endDateTime: data.endDateTime.toDate(),
+      maxParticipants: data.maxParticipants,
+      description: data.description,
+      level: data.level,
+      status: data.status,
+      createdAt: data.createdAt?.toDate() || new Date(),
+    } as FitnessClass
+  })
+}
+
+// Пользователи с конкретной ролью
+export const getUsersWithRole = async (role: string): Promise<User[]> => {
+  const q = query(
+    collection(db, 'users'),
+    where('roles', 'array-contains', role)
+  )
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({
+    uid: d.id,
+    ...d.data(),
+    createdAt: d.data().createdAt?.toDate() || new Date(),
+  })) as User[]
+}
+
+// Назначить или снять роль у пользователя
+export const toggleUserRole = async (userId: string, role: string, active: boolean): Promise<void> => {
+  const userRef = doc(db, 'users', userId)
+  await updateDoc(userRef, {
+    roles: active ? arrayUnion(role) : arrayRemove(role),
   })
 }
 

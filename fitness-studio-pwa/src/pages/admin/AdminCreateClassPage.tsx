@@ -13,6 +13,7 @@ import Alert from '@mui/material/Alert'
 import IconButton from '@mui/material/IconButton'
 import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
+import Autocomplete from '@mui/material/Autocomplete'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker'
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
@@ -20,14 +21,14 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFnsV3'
 import { ru } from 'date-fns/locale'
 import { addWeeks, isBefore, isSameDay } from 'date-fns'
-import { getClassById, createClass, updateClass } from '../../services/firestoreService'
+import { getClassById, createClass, updateClass, getUsersWithRole } from '../../services/firestoreService'
 import { useAuthStore } from '../../store/authStore'
-import { FitnessClass } from '../../types'
+import { FitnessClass, User } from '../../types'
 
 const classSchema = z.object({
   title: z.string().min(2, 'Название должно содержать минимум 2 символа'),
   type: z.string().min(1, 'Выберите тип занятия'),
-  trainerName: z.string().min(2, 'Введите имя тренера'),
+  trainerId: z.string().min(1, 'Выберите тренера'),
   startDateTime: z.date(),
   endDateTime: z.date(),
   maxParticipants: z.coerce.number().min(1, 'Минимум 1 участник').max(100),
@@ -79,11 +80,12 @@ const levelOptions = [
 export default function AdminCreateClassPage() {
   const navigate = useNavigate()
   const { classId } = useParams<{ classId: string }>()
-  const { user } = useAuthStore()
+  const { } = useAuthStore()
   const isEditMode = !!classId
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [trainers, setTrainers] = useState<User[]>([])
   const endDateTimeSet = useRef(false) // Была ли установлена дата окончания
 
   const {
@@ -97,7 +99,7 @@ export default function AdminCreateClassPage() {
     defaultValues: {
       title: '',
       type: 'yoga',
-      trainerName: '',
+      trainerId: '',
       maxParticipants: 15,
       description: '',
       level: 'beginner',
@@ -105,6 +107,11 @@ export default function AdminCreateClassPage() {
       weeklyEndDate: undefined,
     },
   })
+
+  // Загрузка тренеров
+  useEffect(() => {
+    getUsersWithRole('trainer').then(setTrainers).catch(console.error)
+  }, [])
 
   // Загрузка данных занятия при редактировании
   useEffect(() => {
@@ -116,7 +123,7 @@ export default function AdminCreateClassPage() {
         if (classData) {
           setValue('title', classData.title)
           setValue('type', classData.type)
-          setValue('trainerName', classData.trainerName)
+          setValue('trainerId', classData.trainerId || '')
           setValue('startDateTime', new Date(classData.startDateTime))
           setValue('endDateTime', new Date(classData.endDateTime))
           setValue('maxParticipants', classData.maxParticipants)
@@ -154,11 +161,12 @@ export default function AdminCreateClassPage() {
     setError(null)
 
     try {
+      const selectedTrainer = trainers.find((t) => t.uid === data.trainerId)
       const classData: Omit<FitnessClass, 'classId' | 'createdAt'> = {
         title: data.title,
         type: data.type,
-        trainerId: user?.uid || '',
-        trainerName: data.trainerName,
+        trainerId: data.trainerId,
+        trainerName: selectedTrainer?.name || '',
         startDateTime: data.startDateTime,
         endDateTime: data.endDateTime,
         maxParticipants: data.maxParticipants,
@@ -263,15 +271,23 @@ export default function AdminCreateClassPage() {
           />
 
           <Controller
-            name="trainerName"
+            name="trainerId"
             control={control}
             render={({ field }) => (
-              <TextField
-                label="Имя тренера"
-                fullWidth
-                {...field}
-                error={!!errors.trainerName}
-                helperText={errors.trainerName?.message}
+              <Autocomplete
+                options={trainers}
+                getOptionLabel={(t) => t.email ? `${t.name} (${t.email})` : t.name}
+                value={trainers.find((t) => t.uid === field.value) ?? null}
+                onChange={(_, t) => field.onChange(t?.uid ?? '')}
+                noOptionsText="Нет тренеров. Назначьте роль тренера в разделе «Пользователи»."
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Тренер"
+                    error={!!errors.trainerId}
+                    helperText={errors.trainerId?.message}
+                  />
+                )}
               />
             )}
           />

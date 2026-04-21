@@ -5,6 +5,7 @@ interface AuthState {
   user: User | null
   loading: boolean
   isAdmin: boolean
+  isTrainer: boolean
 
   // Actions
   setUser: (user: User | null) => void
@@ -17,10 +18,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   loading: true,
   isAdmin: false,
+  isTrainer: false,
 
   setUser: (user) => {
     const isAdmin = user?.roles.includes('admin') ?? false
-    set({ user, isAdmin, loading: false })
+    const isTrainer = user?.roles.includes('trainer') ?? false
+    set({ user, isAdmin, isTrainer, loading: false })
   },
 
   setLoading: (loading) => set({ loading }),
@@ -31,6 +34,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
-    set({ user: null, isAdmin: false, loading: false })
+    set({ user: null, isAdmin: false, isTrainer: false, loading: false })
   },
 }))

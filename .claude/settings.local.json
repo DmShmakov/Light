@@ -20,7 +20,8 @@
       "Bash(npx vitest *)",
       "Bash(node_modules/.bin/vitest run *)",
       "Bash(cmd *)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(ls src/**/__tests__)"
     ]
   }
 }

@@ -13,10 +13,14 @@ import Chip from '@mui/material/Chip'
 import TextField from '@mui/material/TextField'
 import InputAdornment from '@mui/material/InputAdornment'
 import IconButton from '@mui/material/IconButton'
+import Button from '@mui/material/Button'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import SearchIcon from '@mui/icons-material/Search'
+import FitnessCenterIcon from '@mui/icons-material/FitnessCenter'
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../../services/firebase'
+import { toggleUserRole } from '../../services/firestoreService'
+import { notify } from '../../components/NotificationSnackbar'
 import { User } from '../../types'
 
 export default function AdminUsersPage() {
@@ -24,6 +28,7 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [togglingRole, setTogglingRole] = useState<string | null>(null) // userId
 
   useEffect(() => {
     const loadUsers = async () => {
@@ -47,6 +52,37 @@ export default function AdminUsersPage() {
 
     loadUsers()
   }, [])
+
+  const handleToggleTrainer = async (user: User) => {
+    const isTrainer = user.roles.includes('trainer')
+    setTogglingRole(user.uid)
+    try {
+      await toggleUserRole(user.uid, 'trainer', !isTrainer)
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.uid === user.uid
+            ? {
+                ...u,
+                roles: isTrainer
+                  ? u.roles.filter((r) => r !== 'trainer')
+                  : [...u.roles, 'trainer'],
+              }
+            : u
+        )
+      )
+      notify({
+        message: isTrainer
+          ? `Роль тренера снята с ${user.name}`
+          : `${user.name} назначен(а) тренером`,
+        severity: 'success',
+        duration: 3000,
+      })
+    } catch {
+      notify({ message: 'Ошибка изменения роли', severity: 'error', duration: 3000 })
+    } finally {
+      setTogglingRole(null)
+    }
+  }
 
   // Фильтрация по поиску
   const filteredUsers = users.filter((user) => {
@@ -99,36 +135,58 @@ export default function AdminUsersPage() {
         </Box>
       ) : (
         <List>
-          {filteredUsers.map((user) => (
-            <ListItem key={user.uid}>
-              <ListItemAvatar>
-                <Avatar src={user.photoUrl || undefined}>
-                  {user.name.charAt(0).toUpperCase()}
-                </Avatar>
-              </ListItemAvatar>
-              <ListItemText
-                primary={
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    {user.name}
-                    {user.roles.includes('admin') && (
-                      <Chip label="Админ" size="small" color="secondary" />
-                    )}
-                  </Box>
+          {filteredUsers.map((user) => {
+            const isTrainer = user.roles.includes('trainer')
+            return (
+              <ListItem
+                key={user.uid}
+                sx={{ alignItems: 'flex-start', py: 1.5 }}
+                secondaryAction={
+                  <Button
+                    size="small"
+                    variant={isTrainer ? 'outlined' : 'contained'}
+                    color={isTrainer ? 'error' : 'primary'}
+                    startIcon={<FitnessCenterIcon />}
+                    onClick={() => handleToggleTrainer(user)}
+                    disabled={togglingRole === user.uid}
+                    sx={{ whiteSpace: 'nowrap' }}
+                  >
+                    {isTrainer ? 'Снять тренера' : 'Тренер'}
+                  </Button>
                 }
-                secondary={
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                    {user.email && <span>Email: {user.email}</span>}
-                    <span>Телефон: {user.phone}</span>
-                    {user.createdAt && (
-                      <span style={{ fontSize: '0.75rem', color: 'text.secondary' }}>
-                        Регистрация: {user.createdAt.toLocaleDateString('ru-RU')}
-                      </span>
-                    )}
-                  </Box>
-                }
-              />
-            </ListItem>
-          ))}
+              >
+                <ListItemAvatar>
+                  <Avatar src={user.photoUrl || undefined}>
+                    {user.name.charAt(0).toUpperCase()}
+                  </Avatar>
+                </ListItemAvatar>
+                <ListItemText
+                  primary={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+                      {user.name}
+                      {user.roles.includes('admin') && (
+                        <Chip label="Админ" size="small" color="secondary" />
+                      )}
+                      {isTrainer && (
+                        <Chip label="Тренер" size="small" color="primary" icon={<FitnessCenterIcon />} />
+                      )}
+                    </Box>
+                  }
+                  secondary={
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      {user.email && <span>Email: {user.email}</span>}
+                      <span>Телефон: {user.phone}</span>
+                      {user.createdAt && (
+                        <span style={{ fontSize: '0.75rem' }}>
+                          Регистрация: {user.createdAt.toLocaleDateString('ru-RU')}
+                        </span>
+                      )}
+                    </Box>
+                  }
+                />
+              </ListItem>
+            )
+          })}
         </List>
       )}
     </Container>
